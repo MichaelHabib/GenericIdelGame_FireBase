@@ -6,7 +6,7 @@ import { AVAILABLE_ITEMS } from "@/config/items";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PackageSearch, Info, AlertCircle, CheckCircle, Zap } from "lucide-react";
+import { PackageSearch, Info, CheckCircle, Zap } from "lucide-react";
 import type React from "react";
 import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
@@ -114,8 +114,8 @@ export function InventorySection() {
               <p className="text-sm text-muted-foreground">Items will randomly drop as you play.</p>
             </div>
           ) : (
-            <ScrollArea className="h-[280px] pr-3"> {/* Adjust height as needed */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ScrollArea className="h-[280px] pr-3">
+              <div className="space-y-4"> {/* Changed from grid to single column */}
                 {inventoryItemIds.map(id => (
                   <ItemCard 
                     key={id} 
@@ -141,7 +141,7 @@ export function InventorySection() {
           </CardHeader>
           <CardContent className="space-y-2">
             {activeBuffs.map(buff => (
-              <ActiveBuffDisplay key={buff.itemId + buff.effectType} buff={buff} />
+              <ActiveBuffDisplay key={buff.itemId + buff.effectType + buff.expiresAt} buff={buff} />
             ))}
           </CardContent>
         </Card>

@@ -73,7 +73,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     if (acquiredArtifices[artificeId]) {
-      // Already have this unique artifice
       return;
     }
 
@@ -113,7 +112,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return newInventory;
     });
 
-    const now = Date.now();
     switch (itemDef.effect.type) {
       case "INSTANT_BALANCE":
         setBalance(prev => prev + itemDef.effect.value);
@@ -124,16 +122,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       case "INCOME_MULTIPLIER":
       case "UPKEEP_MULTIPLIER":
         if (itemDef.effect.durationSeconds) {
-          setActiveBuffs(prevBuffs => prevBuffs.filter(buff => buff.itemId !== itemId && buff.effectType !== itemDef.effect.type));
-          setActiveBuffs(prevBuffs => [
-            ...prevBuffs,
-            {
-              itemId: itemDef.id,
-              effectType: itemDef.effect.type,
-              value: itemDef.effect.value,
-              expiresAt: now + itemDef.effect.durationSeconds! * 1000,
-            },
-          ]);
+          setActiveBuffs(prevBuffs => {
+            const now = Date.now();
+            let buffFoundAndStacked = false;
+            
+            let newBuffs = prevBuffs.map(buff => {
+              if (buff.itemId === itemDef.id && buff.effectType === itemDef.effect.type) {
+                buffFoundAndStacked = true;
+                return {
+                  ...buff,
+                  expiresAt: Math.max(now, buff.expiresAt) + itemDef.effect.durationSeconds! * 1000,
+                  value: itemDef.effect.value,
+                };
+              }
+              return buff;
+            });
+
+            if (buffFoundAndStacked) {
+              return newBuffs;
+            } else {
+              newBuffs = prevBuffs.filter(buff => {
+                return !(buff.effectType === itemDef.effect.type && buff.itemId !== itemDef.id);
+              });
+              
+              newBuffs.push({
+                itemId: itemDef.id,
+                effectType: itemDef.effect.type,
+                value: itemDef.effect.value,
+                expiresAt: now + itemDef.effect.durationSeconds! * 1000,
+              });
+              return newBuffs;
+            }
+          });
           setTimeout(() => {
             toast({ title: `${itemDef.name} Activated!`, description: `${itemDef.description}`, duration: itemDef.effect.durationSeconds! * 1000 });
           },0);
@@ -153,7 +173,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let employeeIncome = def.incomePerSecond * hiredEmp.quantity;
         let employeeUpkeep = def.upkeepPerSecond * hiredEmp.quantity;
 
-        // Apply employee-specific permanent artifice effects
         Object.values(acquiredArtifices).forEach(artifice => {
             const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
             if (artificeDef?.effect.type === "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER" && artificeDef.effect.employeeId === def.id) {
@@ -171,7 +190,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let incomeWithTemporaryBuffs = baseIncome;
     let upkeepWithTemporaryBuffs = baseUpkeep;
 
-    // Apply temporary buffs (from items)
     const now = Date.now();
     activeBuffs.forEach(buff => {
       if (now < buff.expiresAt) {
@@ -186,7 +204,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let finalIncome = incomeWithTemporaryBuffs;
     let finalUpkeep = upkeepWithTemporaryBuffs;
 
-    // Apply global permanent artifice effects
     Object.values(acquiredArtifices).forEach(artifice => {
         const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
         if (artificeDef?.effect.type === "GLOBAL_INCOME_MULTIPLIER") {
@@ -205,7 +222,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isGameOver || !gameInitialized) return;
 
     const gameLoop = setInterval(() => {
-      // Item Drop Logic
       if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) { 
         const availableToDrop = AVAILABLE_ITEMS; 
         if (availableToDrop.length > 0) {
@@ -214,7 +230,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Artifice Drop Logic
       if (Math.random() < ARTIFICE_DROP_CHANCE_PER_SECOND) {
         const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
         if (unacquiredArtifices.length > 0) {
@@ -249,7 +264,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               title: "Game Over!",
               description: "Your agency went bankrupt. Reset to try again.",
               variant: "destructive",
-              duration: Infinity,
+              duration: Infinity, 
             });
           }, 0);
           clearInterval(gameLoop); 
@@ -277,7 +292,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const numCurrentlyHired = hiredEmployees[employeeId]?.quantity || 0;
     let actualHireCost = calculateExponentialHireCost(employeeDef.baseHireCost, numCurrentlyHired);
 
-    // Apply artifice cost reductions
     Object.values(acquiredArtifices).forEach(artifice => {
       const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
       if (artificeDef) {
