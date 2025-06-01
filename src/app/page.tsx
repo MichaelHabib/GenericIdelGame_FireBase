@@ -5,16 +5,17 @@ import { GameProvider, useGame } from "@/components/GameProvider";
 import { Dashboard } from "@/components/Dashboard";
 import { EmployeeList } from "@/components/EmployeeList";
 import { HiredEmployeesSummary } from "@/components/HiredEmployeesSummary";
+import { InventorySection } from "@/components/InventorySection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, ServerCrash } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RefreshCw, ServerCrash, Briefcase, Package } from "lucide-react";
 import Image from "next/image";
 
 function GameUI() {
   const { isGameOver, resetGame, gameInitialized, balance } = useGame();
 
   if (!gameInitialized) {
-    // Optional: Show a loading state or placeholder until game initializes
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-background to-secondary">
             <div className="animate-pulse text-primary text-2xl font-semibold">Loading Marketopia...</div>
@@ -58,18 +59,35 @@ function GameUI() {
       
       <main className="space-y-8 max-w-7xl mx-auto">
         <Dashboard />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <EmployeeList />
-          </div>
-          <div>
-            <HiredEmployeesSummary />
-          </div>
-        </div>
+        
+        <Tabs defaultValue="agency" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:w-1/2 mx-auto mb-6">
+            <TabsTrigger value="agency">
+              <Briefcase className="mr-2 h-5 w-5" /> Agency Hub
+            </TabsTrigger>
+            <TabsTrigger value="inventory">
+              <Package className="mr-2 h-5 w-5" /> Inventory
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="agency">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <EmployeeList />
+              </div>
+              <div>
+                <HiredEmployeesSummary />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="inventory">
+            <InventorySection />
+          </TabsContent>
+        </Tabs>
       </main>
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Marketopia Inc. All rights reserved.</p>
-        <p>Press Ctrl+B (or Cmd+B) to toggle the (non-existent) sidebar for a surprise!</p>
       </footer>
     </div>
   );
