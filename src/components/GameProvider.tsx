@@ -26,6 +26,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveBuffs([]);
     setIsGameOver(false);
     setGameInitialized(true);
+    // This toast is usually fine as it's triggered by user action
     toast({ title: "Game Reset", description: "Started a new marketing empire!" });
   }, [toast]);
 
@@ -48,20 +49,26 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const maxQuantity = itemDef.maxQuantity ?? Infinity;
       
       if (currentQuantity >= maxQuantity) {
-        toast({
-          title: "Inventory Full",
-          description: `You already have the maximum amount of ${itemDef.name}.`,
-          variant: "default",
-        });
+        // Defer toast
+        setTimeout(() => {
+          toast({
+            title: "Inventory Full",
+            description: `You already have the maximum amount of ${itemDef.name}.`,
+            variant: "default",
+          });
+        }, 0);
         return prevInventory;
       }
 
       const newQuantity = Math.min(currentQuantity + quantity, maxQuantity);
       
-      toast({
-        title: "Item Acquired!",
-        description: `You found: ${itemDef.name}!`,
-      });
+      // Defer toast
+      setTimeout(() => {
+        toast({
+          title: "Item Acquired!",
+          description: `You found: ${itemDef.name}!`,
+        });
+      }, 0);
       return {
         ...prevInventory,
         [itemId]: { itemId, quantity: newQuantity },
@@ -74,6 +81,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const inventoryItem = inventory[itemId];
 
     if (!itemDef || !inventoryItem || inventoryItem.quantity <= 0) {
+      // This toast is usually fine as it's triggered by user action
       toast({ title: "Item Error", description: "Cannot use this item.", variant: "destructive" });
       return;
     }
@@ -94,6 +102,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     switch (itemDef.effect.type) {
       case "INSTANT_BALANCE":
         setBalance(prev => prev + itemDef.effect.value);
+        // This toast is usually fine
         toast({ title: `${itemDef.name} Used!`, description: `Gained $${itemDef.effect.value.toFixed(0)}!` });
         break;
       case "INCOME_MULTIPLIER":
@@ -110,6 +119,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               expiresAt: now + itemDef.effect.durationSeconds! * 1000,
             },
           ]);
+          // This toast is usually fine
           toast({ title: `${itemDef.name} Activated!`, description: `${itemDef.description}`, duration: itemDef.effect.durationSeconds! * 1000 });
         }
         break;
@@ -149,8 +159,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const gameLoop = setInterval(() => {
       // Item Drop Logic (10% chance per second)
-      if (Math.random() < 0.10) { // 10% chance
-        const availableToDrop = AVAILABLE_ITEMS; // Can be filtered later based on game progress
+      if (Math.random() < 0.10) { 
+        const availableToDrop = AVAILABLE_ITEMS; 
         if (availableToDrop.length > 0) {
           const randomIndex = Math.floor(Math.random() * availableToDrop.length);
           addItemToInventory(availableToDrop[randomIndex].id);
@@ -162,7 +172,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const activeBuffsStillActive = activeBuffs.filter(buff => {
         if (now >= buff.expiresAt) {
           const itemDef = AVAILABLE_ITEMS.find(item => item.id === buff.itemId);
-          toast({ title: "Buff Expired", description: `${itemDef?.name || 'A buff'} has worn off.` });
+          // Defer toast
+          setTimeout(() => {
+            toast({ title: "Buff Expired", description: `${itemDef?.name || 'A buff'} has worn off.` });
+          }, 0);
           return false;
         }
         return true;
@@ -178,14 +191,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (newBalance < 0 && ( (Object.keys(hiredEmployees).length > 0 && totalIncomePerSecond <= totalUpkeepPerSecond) || (Object.keys(hiredEmployees).length === 0 && totalIncomePerSecond === 0) ) ) {
           setIsGameOver(true);
-          toast({
-            title: "Game Over!",
-            description: "Your agency went bankrupt. Reset to try again.",
-            variant: "destructive",
-            duration: Infinity,
-          });
-          clearInterval(gameLoop); // Stop the loop
-          return 0; // Or newBalance, depending on if you want to show negative then game over
+          // Defer toast
+          setTimeout(() => {
+            toast({
+              title: "Game Over!",
+              description: "Your agency went bankrupt. Reset to try again.",
+              variant: "destructive",
+              duration: Infinity,
+            });
+          }, 0);
+          clearInterval(gameLoop); 
+          return 0; 
         }
         return newBalance;
       });
@@ -200,6 +216,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const employeeDef = AVAILABLE_EMPLOYEES.find(emp => emp.id === employeeId);
     if (!employeeDef) {
+      // This toast is usually fine
       toast({ title: "Error", description: "Employee definition not found.", variant: "destructive" });
       return;
     }
@@ -218,11 +235,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return newHired;
       });
+      // This toast is usually fine
       toast({
         title: "Employee Hired!",
         description: `You hired a ${employeeDef.name} for $${actualHireCost.toFixed(0)}.`,
       });
     } else {
+      // This toast is usually fine
       toast({
         title: "Insufficient Funds",
         description: `Not enough balance to hire ${employeeDef.name}. Need $${actualHireCost.toFixed(0)}, have $${balance.toFixed(0)}.`,
@@ -258,3 +277,4 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
+
