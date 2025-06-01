@@ -6,10 +6,11 @@ import { EmployeeCard } from "./EmployeeCard";
 import { useGame } from "./GameProvider";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { AVAILABLE_EMPLOYEES } from "@/config/employees";
 
 export function EmployeeList() {
-  const { hireEmployee, balance, isGameOver, gameInitialized } = useGame();
-  const employees = AVAILABLE_EMPLOYEES; // Assuming AVAILABLE_EMPLOYEES is imported or passed
+  const { hireEmployee, balance, isGameOver, gameInitialized, hiredEmployees } = useGame();
+  const employees = AVAILABLE_EMPLOYEES; 
 
   if (!gameInitialized) {
     return (
@@ -47,21 +48,22 @@ export function EmployeeList() {
           <p>No employees available for hire at the moment.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {employees.map(emp => (
-              <EmployeeCard 
-                key={emp.id} 
-                employee={emp} 
-                onHire={hireEmployee} 
-                currentBalance={balance}
-                isGameOver={isGameOver}
-              />
-            ))}
+            {employees.map(emp => {
+              const totalHiredForThisEmployee = hiredEmployees[emp.id]?.quantity || 0;
+              return (
+                <EmployeeCard 
+                  key={emp.id} 
+                  employee={emp} 
+                  onHire={hireEmployee} 
+                  currentBalance={balance}
+                  isGameOver={isGameOver}
+                  totalHired={totalHiredForThisEmployee} // Pass the count of this specific employee
+                />
+              );
+            })}
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
-
-// Assuming AVAILABLE_EMPLOYEES is defined elsewhere, e.g. src/config/employees.ts
-import { AVAILABLE_EMPLOYEES } from "@/config/employees";

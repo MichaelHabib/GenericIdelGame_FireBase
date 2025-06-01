@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Coins, TrendingUp, TrendingDown, BadgeDollarSign } from "lucide-react";
 import type React from "react";
+import { calculateExponentialHireCost } from "@/config/employees";
 
 interface EmployeeCardProps {
   employee: EmployeeDefinition;
   onHire: (id: string) => void;
   currentBalance: number;
   isGameOver: boolean;
+  totalHired: number; // Quantity of this specific employee type already hired
 }
+
 
 const DetailItem: React.FC<{ icon: React.ElementType, label: string, value: string | number, valueClass?: string }> = ({ icon: Icon, label, value, valueClass }) => (
   <div className="flex items-center text-sm text-muted-foreground">
@@ -22,12 +25,15 @@ const DetailItem: React.FC<{ icon: React.ElementType, label: string, value: stri
   </div>
 );
 
-export function EmployeeCard({ employee, onHire, currentBalance, isGameOver }: EmployeeCardProps) {
+export function EmployeeCard({ employee, onHire, currentBalance, isGameOver, totalHired }: EmployeeCardProps) {
   const IconComponent = employee.icon;
-  const canAfford = currentBalance >= employee.hireCost;
+  // Calculate the cost for the *next* hire of this employee type
+  const calculatedHireCost = calculateExponentialHireCost(employee.baseHireCost, totalHired);
+
+  const canAfford = currentBalance >= calculatedHireCost;
 
   return (
-    <Card className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <Card className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 text-left">
       <CardHeader className="pb-4">
         <div className="flex items-center space-x-3">
           <IconComponent size={36} className="text-primary" />
@@ -38,18 +44,19 @@ export function EmployeeCard({ employee, onHire, currentBalance, isGameOver }: E
         </div>
       </CardHeader>
       <CardContent className="flex-grow space-y-3 pt-0">
-        <DetailItem icon={BadgeDollarSign} label="Hire Cost" value={`$${employee.hireCost}`} />
+        <DetailItem icon={BadgeDollarSign} label="Next Hire Cost" value={`$${calculatedHireCost.toFixed(0)}`} />
         <DetailItem icon={TrendingUp} label="Income/sec" value={`$${employee.incomePerSecond}`} valueClass="text-accent" />
         <DetailItem icon={TrendingDown} label="Upkeep/sec" value={`$${employee.upkeepPerSecond}`} valueClass="text-destructive" />
       </CardContent>
       <CardFooter>
         <Button
           onClick={() => onHire(employee.id)}
-          disabled={!canAfford || isGameOver}
+          disabled={!canAfford || isGameOver} // Simplified: if cannot afford or game over
           className="w-full transition-transform duration-150 ease-in-out hover:scale-105 active:scale-95"
-          aria-label={`Hire ${employee.name}`}
+          aria-label={`Hire ${employee.name} for $${calculatedHireCost.toFixed(0)}`}
         >
-          <Coins className="mr-2 h-4 w-4" /> Hire {canAfford || isGameOver ? "" : `(${(employee.hireCost - currentBalance).toFixed(0)} more needed)`}
+          <Coins className="mr-2 h-4 w-4" /> 
+          Hire {!canAfford && !isGameOver ? `(${(calculatedHireCost - currentBalance).toFixed(0)} more needed)` : ""}
         </Button>
       </CardFooter>
     </Card>

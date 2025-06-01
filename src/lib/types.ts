@@ -6,7 +6,7 @@ export interface EmployeeDefinition {
   name: string;
   description: string;
   icon: LucideIcon;
-  hireCost: number;
+  baseHireCost: number; // Changed from hireCost to baseHireCost
   incomePerSecond: number;
   upkeepPerSecond: number;
 }

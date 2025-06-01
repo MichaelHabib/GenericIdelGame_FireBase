@@ -4,7 +4,7 @@
 import type React from "react";
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import type { GameContextType, HiredEmployee } from "@/lib/types";
-import { AVAILABLE_EMPLOYEES, INITIAL_BALANCE } from "@/config/employees";
+import { AVAILABLE_EMPLOYEES, INITIAL_BALANCE, calculateExponentialHireCost } from "@/config/employees";
 import { useToast } from "@/hooks/use-toast";
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -25,7 +25,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [toast]);
   
   useEffect(() => {
-    // Initialize game on first load or if not initialized
     if (!gameInitialized) {
       resetGame();
     }
@@ -41,8 +40,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    if (balance >= employeeDef.hireCost) {
-      setBalance(prev => prev - employeeDef.hireCost);
+    const numCurrentlyHired = hiredEmployees[employeeId]?.quantity || 0;
+    const actualHireCost = calculateExponentialHireCost(employeeDef.baseHireCost, numCurrentlyHired);
+
+    if (balance >= actualHireCost) {
+      setBalance(prev => prev - actualHireCost);
       setHiredEmployees(prev => {
         const newHired = { ...prev };
         if (newHired[employeeId]) {
@@ -54,16 +56,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       toast({
         title: "Employee Hired!",
-        description: `You hired a ${employeeDef.name}.`,
+        description: `You hired a ${employeeDef.name} for $${actualHireCost.toFixed(0)}.`,
       });
     } else {
       toast({
         title: "Insufficient Funds",
-        description: `Not enough balance to hire ${employeeDef.name}.`,
+        description: `Not enough balance to hire ${employeeDef.name}. Need $${actualHireCost.toFixed(0)}, have $${balance.toFixed(0)}.`,
         variant: "destructive",
       });
     }
-  }, [balance, isGameOver, toast]);
+  }, [balance, isGameOver, toast, hiredEmployees]);
 
   const { totalIncomePerSecond, totalUpkeepPerSecond } = useMemo(() => {
     let income = 0;
@@ -94,12 +96,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 variant: "destructive",
                 duration: Infinity
             });
-            clearInterval(gameLoop); // Stop the loop once game is over
-            return 0; // Or newBalance, depending on desired display post-game over
+            clearInterval(gameLoop);
+            return 0; 
         } else if (newBalance < 0 && Object.keys(hiredEmployees).length === 0) {
-           // If balance is negative and no employees, it's effectively game over or stuck
-           // but allow recovery if income > upkeep even if negative.
-           // This case means no income source, so if negative, it's stuck.
             setIsGameOver(true);
             toast({
                 title: "Game Over!",
