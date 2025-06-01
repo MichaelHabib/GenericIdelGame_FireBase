@@ -6,10 +6,10 @@ import { Dashboard } from "@/components/Dashboard";
 import { EmployeeList } from "@/components/EmployeeList";
 import { HiredEmployeesSummary } from "@/components/HiredEmployeesSummary";
 import { InventorySection } from "@/components/InventorySection";
+import { ArtificeSection } from "@/components/ArtificeSection"; // Import new section
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// Removed Tabs, TabsContent, TabsList, TabsTrigger
-import { RefreshCw, ServerCrash } from "lucide-react"; // Removed Briefcase, Package
+import { RefreshCw, ServerCrash } from "lucide-react"; 
 import Image from "next/image";
 
 function GameUI() {
@@ -60,18 +60,16 @@ function GameUI() {
       <main className="space-y-8 max-w-7xl mx-auto">
         <Dashboard />
         
-        {/* Agency Hub Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-8">
             <EmployeeList />
+            <ArtificeSection /> 
           </div>
-          <div>
+          <div className="space-y-8">
             <HiredEmployeesSummary />
+            <InventorySection />
           </div>
         </div>
-        
-        {/* Inventory Section */}
-        <InventorySection />
         
       </main>
       <footer className="mt-12 text-center text-sm text-muted-foreground">

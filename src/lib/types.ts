@@ -25,10 +25,9 @@ export interface ItemDefinition {
   icon: LucideIcon;
   effect: {
     type: ItemEffectType;
-    value: number; // e.g., amount for INSTANT_BALANCE, multiplier (1.2 for +20%) for others
-    durationSeconds?: number; // Only for timed effects
+    value: number; 
+    durationSeconds?: number; 
   };
-  // maxQuantity?: number; // Optional: Max of this item a player can hold - REMOVED
 }
 
 export interface InventoryItem {
@@ -41,6 +40,67 @@ export interface ActiveBuff {
   effectType: ItemEffectType;
   value: number;
   expiresAt: number; // Timestamp
+}
+
+export type ArtificeEffectTypePermanent = 
+  | "GLOBAL_INCOME_MULTIPLIER"
+  | "GLOBAL_UPKEEP_REDUCTION_MULTIPLIER"
+  | "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER"
+  | "EMPLOYEE_SPECIFIC_UPKEEP_REDUCTION_MULTIPLIER"
+  | "ALL_EMPLOYEES_HIRE_COST_MULTIPLIER"
+  | "SPECIFIC_EMPLOYEE_HIRE_COST_MULTIPLIER";
+
+export interface ArtificeEffect_GlobalIncomeMultiplier {
+  type: "GLOBAL_INCOME_MULTIPLIER";
+  value: number; // e.g., 1.05 for +5%
+}
+export interface ArtificeEffect_GlobalUpkeepReductionMultiplier {
+  type: "GLOBAL_UPKEEP_REDUCTION_MULTIPLIER";
+  value: number; // e.g., 0.95 for -5%
+}
+export interface ArtificeEffect_EmployeeSpecificIncomeMultiplier {
+  type: "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER";
+  employeeId: string;
+  value: number;
+}
+export interface ArtificeEffect_EmployeeSpecificUpkeepReductionMultiplier {
+  type: "EMPLOYEE_SPECIFIC_UPKEEP_REDUCTION_MULTIPLIER";
+  employeeId: string;
+  value: number;
+}
+export interface ArtificeEffect_AllEmployeesHireCostMultiplier {
+  type: "ALL_EMPLOYEES_HIRE_COST_MULTIPLIER";
+  value: number; // e.g. 0.9 for 10% cheaper
+}
+
+export interface ArtificeEffect_SpecificEmployeeHireCostMultiplier {
+  type: "SPECIFIC_EMPLOYEE_HIRE_COST_MULTIPLIER";
+  employeeId: string;
+  value: number; // e.g. 0.9 for 10% cheaper for this employee
+}
+
+
+export type ArtificeEffectPermanent = 
+  | ArtificeEffect_GlobalIncomeMultiplier
+  | ArtificeEffect_GlobalUpkeepReductionMultiplier
+  | ArtificeEffect_EmployeeSpecificIncomeMultiplier
+  | ArtificeEffect_EmployeeSpecificUpkeepReductionMultiplier
+  | ArtificeEffect_AllEmployeesHireCostMultiplier
+  | ArtificeEffect_SpecificEmployeeHireCostMultiplier;
+
+
+export interface ArtificeDefinition {
+  id: string;
+  name: string;
+  description: string; // General description of the artifice
+  effectDescription: string; // Specific description of its effect (e.g., "+5% to all income")
+  icon: LucideIcon;
+  effect: ArtificeEffectPermanent;
+}
+
+export interface AcquiredArtifice {
+  artificeId: string;
+  acquiredAt: number; // Timestamp
 }
 
 export interface GameContextType {
@@ -57,4 +117,6 @@ export interface GameContextType {
   addItemToInventory: (itemId: string, quantity?: number) => void;
   useItem: (itemId: string) => void;
   activeBuffs: ActiveBuff[];
+  acquiredArtifices: Record<string, AcquiredArtifice>;
+  // addArtificeToCollection: (artificeId: string) => void; // Added internally in GameProvider
 }
