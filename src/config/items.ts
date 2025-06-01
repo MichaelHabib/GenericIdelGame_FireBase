@@ -12,7 +12,7 @@ export const AVAILABLE_ITEMS: ItemDefinition[] = [
       type: "INSTANT_BALANCE",
       value: 150, // Grants $150
     },
-    maxQuantity: 5,
+    // maxQuantity: 5, - REMOVED
   },
   {
     id: "productivity_boost",
@@ -24,7 +24,7 @@ export const AVAILABLE_ITEMS: ItemDefinition[] = [
       value: 1.2, // 20% increase
       durationSeconds: 30,
     },
-    maxQuantity: 3,
+    // maxQuantity: 3, - REMOVED
   },
   {
     id: "efficiency_seminar",
@@ -36,7 +36,7 @@ export const AVAILABLE_ITEMS: ItemDefinition[] = [
       value: 0.85, // 15% decrease (1 - 0.15)
       durationSeconds: 60,
     },
-    maxQuantity: 3,
+    // maxQuantity: 3, - REMOVED
   },
    {
     id: "market_surge",
@@ -48,7 +48,7 @@ export const AVAILABLE_ITEMS: ItemDefinition[] = [
       value: 2.0, 
       durationSeconds: 20,
     },
-    maxQuantity: 2,
+    // maxQuantity: 2, - REMOVED
   },
   {
     id: "cost_cutting_expert",
@@ -60,6 +60,6 @@ export const AVAILABLE_ITEMS: ItemDefinition[] = [
       value: 0.5,
       durationSeconds: 45,
     },
-    maxQuantity: 2,
+    // maxQuantity: 2, - REMOVED
   }
 ];

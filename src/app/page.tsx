@@ -8,8 +8,8 @@ import { HiredEmployeesSummary } from "@/components/HiredEmployeesSummary";
 import { InventorySection } from "@/components/InventorySection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, ServerCrash, Briefcase, Package } from "lucide-react";
+// Removed Tabs, TabsContent, TabsList, TabsTrigger
+import { RefreshCw, ServerCrash } from "lucide-react"; // Removed Briefcase, Package
 import Image from "next/image";
 
 function GameUI() {
@@ -60,31 +60,19 @@ function GameUI() {
       <main className="space-y-8 max-w-7xl mx-auto">
         <Dashboard />
         
-        <Tabs defaultValue="agency" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:w-1/2 mx-auto mb-6">
-            <TabsTrigger value="agency">
-              <Briefcase className="mr-2 h-5 w-5" /> Agency Hub
-            </TabsTrigger>
-            <TabsTrigger value="inventory">
-              <Package className="mr-2 h-5 w-5" /> Inventory
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="agency">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <EmployeeList />
-              </div>
-              <div>
-                <HiredEmployeesSummary />
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="inventory">
-            <InventorySection />
-          </TabsContent>
-        </Tabs>
+        {/* Agency Hub Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <EmployeeList />
+          </div>
+          <div>
+            <HiredEmployeesSummary />
+          </div>
+        </div>
+        
+        {/* Inventory Section */}
+        <InventorySection />
+        
       </main>
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Marketopia Inc. All rights reserved.</p>

@@ -28,7 +28,7 @@ export interface ItemDefinition {
     value: number; // e.g., amount for INSTANT_BALANCE, multiplier (1.2 for +20%) for others
     durationSeconds?: number; // Only for timed effects
   };
-  maxQuantity?: number; // Optional: Max of this item a player can hold
+  // maxQuantity?: number; // Optional: Max of this item a player can hold - REMOVED
 }
 
 export interface InventoryItem {

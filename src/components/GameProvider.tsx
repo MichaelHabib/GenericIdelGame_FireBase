@@ -46,21 +46,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setInventory(prevInventory => {
       const existingItem = prevInventory[itemId];
       const currentQuantity = existingItem ? existingItem.quantity : 0;
-      const maxQuantity = itemDef.maxQuantity ?? Infinity;
+      // const maxQuantity = itemDef.maxQuantity ?? Infinity; // - REMOVED maxQuantity logic
       
-      if (currentQuantity >= maxQuantity) {
-        // Defer toast
-        setTimeout(() => {
-          toast({
-            title: "Inventory Full",
-            description: `You already have the maximum amount of ${itemDef.name}.`,
-            variant: "default",
-          });
-        }, 0);
-        return prevInventory;
-      }
+      // if (currentQuantity >= maxQuantity) { // - REMOVED maxQuantity logic
+      //   setTimeout(() => { // - REMOVED maxQuantity logic
+      //     toast({ // - REMOVED maxQuantity logic
+      //       title: "Inventory Full", // - REMOVED maxQuantity logic
+      //       description: `You already have the maximum amount of ${itemDef.name}.`, // - REMOVED maxQuantity logic
+      //       variant: "default", // - REMOVED maxQuantity logic
+      //     }); // - REMOVED maxQuantity logic
+      //   }, 0); // - REMOVED maxQuantity logic
+      //   return prevInventory; // - REMOVED maxQuantity logic
+      // } // - REMOVED maxQuantity logic
 
-      const newQuantity = Math.min(currentQuantity + quantity, maxQuantity);
+      const newQuantity = currentQuantity + quantity; // Simplified quantity update
       
       // Defer toast
       setTimeout(() => {
@@ -277,4 +276,3 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
-
