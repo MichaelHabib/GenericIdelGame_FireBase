@@ -59,21 +59,29 @@ function GameUI() {
             <TabsTrigger value="artifices">Artifices</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
           </TabsList>
-          <TabsContent value="upgrades" className="min-h-[50vh] flex flex-col mt-2">
-            <UpgradeStore />
+          <TabsContent value="upgrades" className="flex flex-col mt-2">
+            <div className="min-h-[50vh] flex flex-col flex-grow">
+              <UpgradeStore />
+            </div>
           </TabsContent>
-          <TabsContent value="inventory" className="min-h-[50vh] flex flex-col mt-2">
-            <InventorySection />
+          <TabsContent value="inventory" className="flex flex-col mt-2">
+            <div className="min-h-[50vh] flex flex-col flex-grow">
+              <InventorySection />
+            </div>
           </TabsContent>
-          <TabsContent value="artifices" className="min-h-[50vh] flex flex-col mt-2">
-            <ArtificeSection />
+          <TabsContent value="artifices" className="flex flex-col mt-2">
+            <div className="min-h-[50vh] flex flex-col flex-grow">
+              <ArtificeSection />
+            </div>
           </TabsContent>
-          <TabsContent value="achievements" className="min-h-[50vh] flex flex-col mt-2">
-            <AchievementsSection />
+          <TabsContent value="achievements" className="flex flex-col mt-2">
+            <div className="min-h-[50vh] flex flex-col flex-grow">
+              <AchievementsSection />
+            </div>
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-center mt-auto pt-8"> {/* mt-auto pushes this to bottom if flex-grow is working */}
+        <div className="flex justify-center mt-auto pt-8"> 
             <Button onClick={resetGame} variant="outline" size="lg">
               <RefreshCw className="mr-2 h-5 w-5" /> Reset Game
             </Button>
@@ -95,5 +103,3 @@ export default function Home() {
     </GameProvider>
   );
 }
-
-    
