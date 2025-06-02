@@ -59,16 +59,16 @@ function GameUI() {
             <TabsTrigger value="artifices">Artifices</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
           </TabsList>
-          <TabsContent value="upgrades" className="min-h-[50vh] flex flex-col flex-grow mt-2">
+          <TabsContent value="upgrades" className="min-h-[50vh] flex flex-col mt-2">
             <UpgradeStore />
           </TabsContent>
-          <TabsContent value="inventory" className="min-h-[50vh] flex flex-col flex-grow mt-2">
+          <TabsContent value="inventory" className="min-h-[50vh] flex flex-col mt-2">
             <InventorySection />
           </TabsContent>
-          <TabsContent value="artifices" className="min-h-[50vh] flex flex-col flex-grow mt-2">
+          <TabsContent value="artifices" className="min-h-[50vh] flex flex-col mt-2">
             <ArtificeSection />
           </TabsContent>
-          <TabsContent value="achievements" className="min-h-[50vh] flex flex-col flex-grow mt-2">
+          <TabsContent value="achievements" className="min-h-[50vh] flex flex-col mt-2">
             <AchievementsSection />
           </TabsContent>
         </Tabs>
