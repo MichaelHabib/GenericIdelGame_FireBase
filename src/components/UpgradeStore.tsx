@@ -4,11 +4,22 @@
 import { UpgradeCard } from "./UpgradeCard"; 
 import { useGame } from "./GameProvider";
 import { Skeleton } from "./ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { AVAILABLE_UPGRADES } from "@/config/upgrades"; 
+import { Button } from "./ui/button";
+import type { PurchaseMultiplier } from "@/lib/types";
+
+const multiplierOptions: PurchaseMultiplier[] = [1, 5, 10, 25, 50, 100, 1000, 10000, 100000, 1000000, "MAX"];
 
 export function UpgradeStore() {
-  const { purchaseUpgrade, points, gameInitialized, purchasedUpgrades } = useGame(); 
+  const { 
+    points, 
+    gameInitialized, 
+    purchasedUpgrades, 
+    purchaseMultiplier, 
+    setPurchaseMultiplier 
+  } = useGame(); 
+  
   const upgrades = AVAILABLE_UPGRADES;
 
   if (!gameInitialized) {
@@ -38,9 +49,27 @@ export function UpgradeStore() {
     <Card className="shadow-lg flex flex-col flex-grow">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">Purchase Upgrades</CardTitle>
-        <p className="text-muted-foreground">Invest your points to increase your passive Points Per Second (PPS).</p>
+        <CardDescription>Invest your points to increase your passive Points Per Second (PPS).</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow overflow-y-auto">
+        <div className="mb-4">
+          <p className="text-sm font-medium mb-2">Purchase Multiplier:</p>
+          <div className="flex flex-wrap gap-2">
+            {multiplierOptions.map((multiplier) => (
+              <Button
+                key={multiplier}
+                variant={purchaseMultiplier === multiplier ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPurchaseMultiplier(multiplier)}
+              >
+                {typeof multiplier === 'number' && multiplier >= 1000 ? 
+                  (multiplier >= 1000000 ? `${multiplier/1000000}M` : `${multiplier/1000}K`): 
+                  multiplier}
+              </Button>
+            ))}
+          </div>
+        </div>
+
         {upgrades.length === 0 ? (
           <p>No upgrades available at the moment.</p>
         ) : (
@@ -51,9 +80,9 @@ export function UpgradeStore() {
                 <UpgradeCard
                   key={upg.id}
                   upgrade={upg}
-                  onPurchase={purchaseUpgrade}
                   currentPoints={points}
                   totalPurchased={totalPurchasedForThisUpgrade}
+                  currentMultiplier={purchaseMultiplier}
                 />
               );
             })}
@@ -63,5 +92,3 @@ export function UpgradeStore() {
     </Card>
   );
 }
-
-    

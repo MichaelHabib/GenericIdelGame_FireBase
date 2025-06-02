@@ -1,6 +1,6 @@
 
 import type { UpgradeDefinition } from "@/lib/types";
-import { MousePointerClick, Server, Zap, Brain, Rocket, Gem, Star, Hourglass, Atom } from "lucide-react";
+import { MousePointerClick, Server, Zap, Brain, Rocket, Gem, Star, Hourglass, Atom, Layers, Lightbulb, Factory } from "lucide-react";
 
 export const AVAILABLE_UPGRADES: UpgradeDefinition[] = [
  {
@@ -74,10 +74,68 @@ export const AVAILABLE_UPGRADES: UpgradeDefinition[] = [
     icon: Atom,
     baseCost: 5000000000, // 5B
     ppsPerUnit: 300000,
+  },
+  {
+    id: "idea_incubator",
+    name: "Idea Incubator",
+    description: "Cultivates raw thoughts into tangible point-generating concepts.",
+    icon: Lightbulb,
+    baseCost: 75000000000, // 75B
+    ppsPerUnit: 2000000, // 2M
+  },
+  {
+    id: "dream_weaver",
+    name: "Dream Weaver",
+    description: "Manifests points directly from the collective unconscious.",
+    icon: Layers,
+    baseCost: 1000000000000, // 1T
+    ppsPerUnit: 15000000, // 15M
+  },
+  {
+    id: "point_fabricator",
+    name: "Point Fabricator Prime",
+    description: "A massive, automated factory dedicated to point production.",
+    icon: Factory,
+    baseCost: 15000000000000, // 15T
+    ppsPerUnit: 100000000, // 100M
   }
 ];
 
 // quantity is the number of this specific upgrade type ALREADY PURCHASED
 export const calculateExponentialUpgradeCost = (baseCost: number, quantity: number): number => {
  return baseCost * Math.pow(1.15, quantity);
+};
+
+export const calculateTotalCostForQuantity = (
+  baseCost: number,
+  currentOwned: number,
+  quantityToBuy: number
+): number => {
+  let totalCost = 0;
+  for (let i = 0; i < quantityToBuy; i++) {
+    totalCost += calculateExponentialUpgradeCost(baseCost, currentOwned + i);
+  }
+  return totalCost;
+};
+
+export const calculateMaxAffordable = (
+  baseCost: number,
+  currentOwned: number,
+  currentPoints: number
+): { quantity: number; totalCost: number } => {
+  let quantity = 0;
+  let totalCost = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const nextCost = calculateExponentialUpgradeCost(baseCost, currentOwned + quantity);
+    if (currentPoints >= totalCost + nextCost) {
+      totalCost += nextCost;
+      quantity++;
+    } else {
+      break;
+    }
+    // Safety break for very low costs / high points to prevent infinite loops in extreme scenarios
+    if (quantity > 1000000) break; 
+  }
+  return { quantity, totalCost };
 };

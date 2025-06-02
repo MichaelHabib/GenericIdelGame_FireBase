@@ -92,9 +92,9 @@ export interface AcquiredArtifice {
   acquiredAt: number;
 }
 
-export type AchievementRewardType = 
-  | { type: 'POINTS'; value: number; }
-  | { type: 'ITEM'; itemId: string; quantity: number; };
+export type AchievementRewardType =
+  | { type: "POINTS"; value: number }
+  | { type: "ITEM"; itemId: string; quantity: number };
 
 export interface GameStateSnapshot {
   points: number;
@@ -117,11 +117,11 @@ export interface AchievementDefinition {
 
 export interface AcquiredAchievement {
   achievementId: string;
-  acquiredAt: number; 
+  acquiredAt: number;
 }
 
-export type PrestigeUpgradeEffectType = 
-  | "GLOBAL_PPS_BOOST_PRESTIGE" 
+export type PrestigeUpgradeEffectType =
+  | "GLOBAL_PPS_BOOST_PRESTIGE"
   | "GLOBAL_PPC_BOOST_PRESTIGE";
 
 export interface PrestigeUpgradeEffect_GlobalPPS {
@@ -134,7 +134,7 @@ export interface PrestigeUpgradeEffect_GlobalPPC {
   value: number; // e.g., 0.05 for +5%
 }
 
-export type PrestigeUpgradeEffect = 
+export type PrestigeUpgradeEffect =
   | PrestigeUpgradeEffect_GlobalPPS
   | PrestigeUpgradeEffect_GlobalPPC;
 
@@ -153,11 +153,14 @@ export interface PurchasedPrestigeUpgrade {
   level: number; // Current level of the upgrade
 }
 
+export type PurchaseMultiplier = 1 | 5 | 10 | 25 | 50 | 100 | 1000 | 10000 | 100000 | 1000000 | "MAX";
+
+
 export interface GameContextType {
   points: number;
   setPoints: React.Dispatch<React.SetStateAction<number>>;
   purchasedUpgrades: Record<string, PurchasedUpgrade>;
-  purchaseUpgrade: (upgradeId: string) => void;
+  purchaseUpgrade: (upgradeId: string, multiplier: PurchaseMultiplier) => void;
   clickMasterButton: () => void;
   pointsPerClick: number;
   totalPointsPerSecond: number;
@@ -174,4 +177,6 @@ export interface GameContextType {
   purchasedPrestigeUpgrades: Record<string, PurchasedPrestigeUpgrade>;
   prestigeGame: () => void;
   purchasePrestigeUpgrade: (upgradeId: string) => void;
+  purchaseMultiplier: PurchaseMultiplier;
+  setPurchaseMultiplier: React.Dispatch<React.SetStateAction<PurchaseMultiplier>>;
 }
