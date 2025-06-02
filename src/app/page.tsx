@@ -7,11 +7,12 @@ import { UpgradeStore } from "@/components/UpgradeStore";
 import { PurchasedUpgradesSummary } from "@/components/PurchasedUpgradesSummary";
 import { InventorySection } from "@/components/InventorySection";
 import { ArtificeSection } from "@/components/ArtificeSection";
-import { AchievementsSection } from "@/components/AchievementsSection"; // Added
+import { AchievementsSection } from "@/components/AchievementsSection";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card"; // Removed unused Card imports
+import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw, Pointer } from "lucide-react";
 import Image from "next/image";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function GameUI() {
   const { resetGame, gameInitialized, clickMasterButton } = useGame();
@@ -55,12 +56,25 @@ function GameUI() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <UpgradeStore /> 
-            <ArtificeSection /> 
-            <AchievementsSection /> {/* Added Achievements Section */}
           </div>
           <div className="space-y-8">
             <PurchasedUpgradesSummary />
-            <InventorySection />
+            <Tabs defaultValue="inventory" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="inventory">Inventory</TabsTrigger>
+                <TabsTrigger value="artifices">Artifices</TabsTrigger>
+                <TabsTrigger value="achievements">Achievements</TabsTrigger>
+              </TabsList>
+              <TabsContent value="inventory">
+                <InventorySection />
+              </TabsContent>
+              <TabsContent value="artifices">
+                <ArtificeSection />
+              </TabsContent>
+              <TabsContent value="achievements">
+                <AchievementsSection />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
 
