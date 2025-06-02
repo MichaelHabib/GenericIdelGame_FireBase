@@ -1,65 +1,61 @@
 
 import type { ItemDefinition } from "@/lib/types";
-import { Gift, Zap, ShieldCheck, CoffeeIcon, TrendingUp, TrendingDown } from "lucide-react"; // Assuming CoffeeIcon exists or use a different one like Mug
+import { Gift, Zap, ShieldCheck, CoffeeIcon, TrendingUp, TrendingDown } from "lucide-react";
 
 export const AVAILABLE_ITEMS: ItemDefinition[] = [
   {
-    id: "quick_cash",
-    name: "Quick Cash Grant",
-    description: "A small grant to boost your funds instantly.",
+    id: "quick_points",
+    name: "Quick Points Grant",
+    description: "A small grant to boost your points instantly.",
     icon: Gift,
     effect: {
-      type: "INSTANT_BALANCE",
-      value: 150, // Grants $150
+      type: "INSTANT_POINTS",
+      value: 150,
     },
-    // maxQuantity: 5, - REMOVED
   },
   {
-    id: "productivity_boost",
-    name: "Productivity Coffee",
-    description: "Boosts all employee income by 20% for 30 seconds.",
+    id: "pps_boost_coffee",
+    name: "PPS Boost Coffee",
+    description: "Boosts all PPS by 20% for 30 seconds.",
     icon: CoffeeIcon,
     effect: {
-      type: "INCOME_MULTIPLIER",
+      type: "PPS_MULTIPLIER",
       value: 1.2, // 20% increase
       durationSeconds: 30,
     },
-    // maxQuantity: 3, - REMOVED
-  },
-  {
-    id: "efficiency_seminar",
-    name: "Efficiency Seminar Pass",
-    description: "Reduces all employee upkeep by 15% for 60 seconds.",
-    icon: ShieldCheck, // Using ShieldCheck as BookOpenCheck isn't standard
-    effect: {
-      type: "UPKEEP_MULTIPLIER",
-      value: 0.85, // 15% decrease (1 - 0.15)
-      durationSeconds: 60,
-    },
-    // maxQuantity: 3, - REMOVED
   },
    {
-    id: "market_surge",
-    name: "Market Surge",
-    description: "Temporarily doubles income from all sources for 20 seconds.",
+    id: "market_frenzy",
+    name: "Market Frenzy Elixir",
+    description: "Temporarily doubles PPS from all sources for 20 seconds.",
     icon: TrendingUp,
     effect: {
-      type: "INCOME_MULTIPLIER",
-      value: 2.0, 
+      type: "PPS_MULTIPLIER",
+      value: 2.0,
       durationSeconds: 20,
     },
-    // maxQuantity: 2, - REMOVED
   },
-  {
-    id: "cost_cutting_expert",
-    name: "Cost-Cutting Expert Advice",
-    description: "Halves all upkeep costs for 45 seconds.",
-    icon: TrendingDown,
-    effect: {
-      type: "UPKEEP_MULTIPLIER",
-      value: 0.5,
-      durationSeconds: 45,
-    },
-    // maxQuantity: 2, - REMOVED
-  }
+  // Removed upkeep related items as upkeep is removed from core spec
+  // {
+  //   id: "efficiency_seminar",
+  //   name: "Efficiency Seminar Pass",
+  //   description: "Reduces all employee upkeep by 15% for 60 seconds.",
+  //   icon: ShieldCheck,
+  //   effect: {
+  //     type: "UPKEEP_MULTIPLIER",
+  //     value: 0.85,
+  //     durationSeconds: 60,
+  //   },
+  // },
+  // {
+  //   id: "cost_cutting_expert",
+  //   name: "Cost-Cutting Expert Advice",
+  //   description: "Halves all upkeep costs for 45 seconds.",
+  //   icon: TrendingDown,
+  //   effect: {
+  //     type: "UPKEEP_MULTIPLIER",
+  //     value: 0.5,
+  //     durationSeconds: 45,
+  //   },
+  // }
 ];

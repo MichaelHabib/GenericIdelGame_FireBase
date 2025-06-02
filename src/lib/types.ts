@@ -1,22 +1,22 @@
 
 import type { LucideIcon } from "lucide-react";
 
-export interface EmployeeDefinition {
+export interface UpgradeDefinition {
   id: string;
   name: string;
   description: string;
   icon: LucideIcon;
-  baseHireCost: number;
-  incomePerSecond: number;
-  upkeepPerSecond: number;
+  baseCost: number;
+  ppsPerUnit: number; // Points Per Second per unit
+  // upkeepPerSecond removed as per new spec
 }
 
-export interface HiredEmployee {
-  id: string; // Corresponds to EmployeeDefinition id
+export interface PurchasedUpgrade {
+  id: string; // Corresponds to UpgradeDefinition id
   quantity: number;
 }
 
-export type ItemEffectType = "INSTANT_BALANCE" | "INCOME_MULTIPLIER" | "UPKEEP_MULTIPLIER";
+export type ItemEffectType = "INSTANT_POINTS" | "PPS_MULTIPLIER"; // Simplified for clicker
 
 export interface ItemDefinition {
   id: string;
@@ -25,8 +25,8 @@ export interface ItemDefinition {
   icon: LucideIcon;
   effect: {
     type: ItemEffectType;
-    value: number; 
-    durationSeconds?: number; 
+    value: number;
+    durationSeconds?: number;
   };
 }
 
@@ -42,58 +42,49 @@ export interface ActiveBuff {
   expiresAt: number; // Timestamp
 }
 
-export type ArtificeEffectTypePermanent = 
-  | "GLOBAL_INCOME_MULTIPLIER"
-  | "GLOBAL_UPKEEP_REDUCTION_MULTIPLIER"
-  | "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER"
-  | "EMPLOYEE_SPECIFIC_UPKEEP_REDUCTION_MULTIPLIER"
-  | "ALL_EMPLOYEES_HIRE_COST_MULTIPLIER"
-  | "SPECIFIC_EMPLOYEE_HIRE_COST_MULTIPLIER";
+// Artifice types remain largely the same, but effects might target PPS or click power
+export type ArtificeEffectTypePermanent =
+  | "GLOBAL_PPS_MULTIPLIER"
+  | "GLOBAL_CLICK_POWER_MULTIPLIER" // New: for click button
+  | "UPGRADE_SPECIFIC_PPS_MULTIPLIER"
+  | "ALL_UPGRADES_COST_MULTIPLIER"
+  | "SPECIFIC_UPGRADE_COST_MULTIPLIER";
 
-export interface ArtificeEffect_GlobalIncomeMultiplier {
-  type: "GLOBAL_INCOME_MULTIPLIER";
+export interface ArtificeEffect_GlobalPPSMultiplier {
+  type: "GLOBAL_PPS_MULTIPLIER";
   value: number; // e.g., 1.05 for +5%
 }
-export interface ArtificeEffect_GlobalUpkeepReductionMultiplier {
-  type: "GLOBAL_UPKEEP_REDUCTION_MULTIPLIER";
-  value: number; // e.g., 0.95 for -5%
+export interface ArtificeEffect_GlobalClickPowerMultiplier {
+  type: "GLOBAL_CLICK_POWER_MULTIPLIER";
+  value: number; // e.g., 1.1 for +10% click power
 }
-export interface ArtificeEffect_EmployeeSpecificIncomeMultiplier {
-  type: "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER";
-  employeeId: string;
+export interface ArtificeEffect_UpgradeSpecificPPSMultiplier {
+  type: "UPGRADE_SPECIFIC_PPS_MULTIPLIER";
+  upgradeId: string;
   value: number;
 }
-export interface ArtificeEffect_EmployeeSpecificUpkeepReductionMultiplier {
-  type: "EMPLOYEE_SPECIFIC_UPKEEP_REDUCTION_MULTIPLIER";
-  employeeId: string;
-  value: number;
-}
-export interface ArtificeEffect_AllEmployeesHireCostMultiplier {
-  type: "ALL_EMPLOYEES_HIRE_COST_MULTIPLIER";
+export interface ArtificeEffect_AllUpgradesCostMultiplier {
+  type: "ALL_UPGRADES_COST_MULTIPLIER";
   value: number; // e.g. 0.9 for 10% cheaper
 }
-
-export interface ArtificeEffect_SpecificEmployeeHireCostMultiplier {
-  type: "SPECIFIC_EMPLOYEE_HIRE_COST_MULTIPLIER";
-  employeeId: string;
-  value: number; // e.g. 0.9 for 10% cheaper for this employee
+export interface ArtificeEffect_SpecificUpgradeCostMultiplier {
+  type: "SPECIFIC_UPGRADE_COST_MULTIPLIER";
+  upgradeId: string;
+  value: number; // e.g. 0.9 for 10% cheaper for this upgrade
 }
 
-
-export type ArtificeEffectPermanent = 
-  | ArtificeEffect_GlobalIncomeMultiplier
-  | ArtificeEffect_GlobalUpkeepReductionMultiplier
-  | ArtificeEffect_EmployeeSpecificIncomeMultiplier
-  | ArtificeEffect_EmployeeSpecificUpkeepReductionMultiplier
-  | ArtificeEffect_AllEmployeesHireCostMultiplier
-  | ArtificeEffect_SpecificEmployeeHireCostMultiplier;
-
+export type ArtificeEffectPermanent =
+  | ArtificeEffect_GlobalPPSMultiplier
+  | ArtificeEffect_GlobalClickPowerMultiplier
+  | ArtificeEffect_UpgradeSpecificPPSMultiplier
+  | ArtificeEffect_AllUpgradesCostMultiplier
+  | ArtificeEffect_SpecificUpgradeCostMultiplier;
 
 export interface ArtificeDefinition {
   id: string;
   name: string;
-  description: string; // General description of the artifice
-  effectDescription: string; // Specific description of its effect (e.g., "+5% to all income")
+  description: string;
+  effectDescription: string;
   icon: LucideIcon;
   effect: ArtificeEffectPermanent;
 }
@@ -104,13 +95,14 @@ export interface AcquiredArtifice {
 }
 
 export interface GameContextType {
-  balance: number;
-  setBalance: React.Dispatch<React.SetStateAction<number>>;
-  hiredEmployees: Record<string, HiredEmployee>;
-  hireEmployee: (employeeId: string) => void;
-  totalIncomePerSecond: number;
-  totalUpkeepPerSecond: number;
-  isGameOver: boolean;
+  points: number;
+  setPoints: React.Dispatch<React.SetStateAction<number>>;
+  purchasedUpgrades: Record<string, PurchasedUpgrade>;
+  purchaseUpgrade: (upgradeId: string) => void;
+  clickMasterButton: () => void; // New for main click action
+  pointsPerClick: number;
+  totalPointsPerSecond: number;
+  // isGameOver removed
   resetGame: () => void;
   gameInitialized: boolean;
   inventory: Record<string, InventoryItem>;
@@ -118,5 +110,4 @@ export interface GameContextType {
   useItem: (itemId: string) => void;
   activeBuffs: ActiveBuff[];
   acquiredArtifices: Record<string, AcquiredArtifice>;
-  // addArtificeToCollection: (artificeId: string) => void; // Added internally in GameProvider
 }

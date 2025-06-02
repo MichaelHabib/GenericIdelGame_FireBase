@@ -66,17 +66,17 @@ export function ArtificeSection() {
         <CardTitle className="text-2xl font-semibold flex items-center">
           <Sparkles className="mr-3 h-6 w-6 text-amber-500" /> Acquired Artifices
         </CardTitle>
-        <CardDescription>Ancient relics granting permanent boosts to your agency.</CardDescription>
+        <CardDescription>Ancient relics granting permanent boosts to your game.</CardDescription>
       </CardHeader>
       <CardContent>
         {artificeIds.length === 0 ? (
           <div className="text-center py-8">
             <Info className="mx-auto h-12 w-12 text-muted-foreground" />
             <p className="mt-4 text-muted-foreground">No Artifices acquired yet.</p>
-            <p className="text-sm text-muted-foreground">These rare items may drop randomly as you play.</p>
+            <p className="text-sm text-muted-foreground">These rare items may drop randomly as you play or click.</p>
           </div>
         ) : (
-          <ScrollArea className="h-[200px] pr-3"> {/* Adjust height as needed */}
+          <ScrollArea className="h-[200px] pr-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {artificeIds.map(id => {
                 const artificeDef = AVAILABLE_ARTIFICES.find(a => a.id === id);
@@ -89,3 +89,4 @@ export function ArtificeSection() {
     </Card>
   );
 }
+

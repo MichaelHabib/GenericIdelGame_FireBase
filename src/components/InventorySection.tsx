@@ -10,8 +10,10 @@ import { PackageSearch, Info, CheckCircle, Zap } from "lucide-react";
 import type React from "react";
 import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
+import type { ActiveBuff, ItemDefinition } from "@/lib/types";
 
-const ItemCard: React.FC<{ itemId: string; quantity: number; onUse: (itemId: string) => void; isGameOver: boolean }> = ({ itemId, quantity, onUse, isGameOver }) => {
+
+const ItemCard: React.FC<{ itemId: string; quantity: number; onUse: (itemId: string) => void; }> = ({ itemId, quantity, onUse }) => {
   const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
   if (!itemDef) return null;
 
@@ -31,7 +33,7 @@ const ItemCard: React.FC<{ itemId: string; quantity: number; onUse: (itemId: str
       <CardFooter>
         <Button 
           onClick={() => onUse(itemId)} 
-          disabled={isGameOver || quantity <= 0} 
+          disabled={quantity <= 0} 
           className="w-full"
           size="sm"
         >
@@ -42,16 +44,18 @@ const ItemCard: React.FC<{ itemId: string; quantity: number; onUse: (itemId: str
   );
 };
 
-const ActiveBuffDisplay: React.FC<{ buff: ReturnType<typeof useGame>['activeBuffs'][0] }> = ({ buff }) => {
+const ActiveBuffDisplay: React.FC<{ buff: ActiveBuff }> = ({ buff }) => {
   const itemDef = AVAILABLE_ITEMS.find(item => item.id === buff.itemId);
   if (!itemDef) return null;
 
   const Icon = itemDef.icon;
   const timeLeft = Math.max(0, Math.round((buff.expiresAt - Date.now()) / 1000));
-  const effectText = itemDef.effect.type === "INCOME_MULTIPLIER" 
-    ? `+${((buff.value - 1) * 100).toFixed(0)}% Income`
-    : `-${((1 - buff.value) * 100).toFixed(0)}% Upkeep`;
-
+  
+  let effectText = "";
+  if (itemDef.effect.type === "PPS_MULTIPLIER") {
+    effectText = `+${((buff.value - 1) * 100).toFixed(0)}% PPS`;
+  }
+  // Add other buff types here if needed
 
   return (
     <div className="flex items-center justify-between p-2 bg-accent/10 rounded-md border border-accent/30">
@@ -68,7 +72,7 @@ const ActiveBuffDisplay: React.FC<{ buff: ReturnType<typeof useGame>['activeBuff
 };
 
 export function InventorySection() {
-  const { inventory, useItem, isGameOver, gameInitialized, activeBuffs } = useGame();
+  const { inventory, useItem, gameInitialized, activeBuffs } = useGame();
   const inventoryItemIds = Object.keys(inventory);
 
   if (!gameInitialized) {
@@ -111,18 +115,17 @@ export function InventorySection() {
             <div className="text-center py-8">
               <Info className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-muted-foreground">Your inventory is empty.</p>
-              <p className="text-sm text-muted-foreground">Items will randomly drop as you play.</p>
+              <p className="text-sm text-muted-foreground">Items will randomly drop as you play or click.</p>
             </div>
           ) : (
             <ScrollArea className="h-[280px] pr-3">
-              <div className="space-y-4"> {/* Changed from grid to single column */}
+              <div className="space-y-4">
                 {inventoryItemIds.map(id => (
                   <ItemCard 
                     key={id} 
                     itemId={id} 
                     quantity={inventory[id].quantity} 
                     onUse={useItem}
-                    isGameOver={isGameOver}
                   />
                 ))}
               </div>
@@ -137,7 +140,7 @@ export function InventorySection() {
             <CardTitle className="text-xl font-semibold flex items-center">
               <CheckCircle className="mr-3 h-5 w-5 text-accent" /> Active Effects
             </CardTitle>
-            <CardDescription>Temporary boosts currently affecting your agency.</CardDescription>
+            <CardDescription>Temporary boosts currently affecting your game.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {activeBuffs.map(buff => (
@@ -149,3 +152,4 @@ export function InventorySection() {
     </div>
   );
 }
+

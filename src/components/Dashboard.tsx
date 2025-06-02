@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Coins, TrendingUp, Zap } from "lucide-react"; // Changed icons
 import { useGame } from "./GameProvider";
 import { Skeleton } from "./ui/skeleton";
 
@@ -13,14 +13,14 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
       <Icon className={`h-5 w-5 ${colorClass || 'text-muted-foreground'}`} />
     </CardHeader>
     <CardContent>
-      <div className="text-2xl font-bold" data-testid={dataTestId}>{typeof value === 'number' ? value.toLocaleString() : value}</div>
+      <div className="text-2xl font-bold" data-testid={dataTestId}>{typeof value === 'number' ? value.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 1}) : value}</div>
     </CardContent>
   </Card>
 );
 
 
 export function Dashboard() {
-  const { balance, totalIncomePerSecond, totalUpkeepPerSecond, isGameOver, gameInitialized } = useGame();
+  const { points, totalPointsPerSecond, pointsPerClick, gameInitialized } = useGame();
 
   if (!gameInitialized) {
     return (
@@ -35,25 +35,25 @@ export function Dashboard() {
   return (
     <div className="grid gap-6 md:grid-cols-3">
       <StatCard 
-        title="Current Balance" 
-        value={`$${balance.toFixed(0)}`} 
-        icon={DollarSign} 
-        colorClass={isGameOver ? "text-destructive" : balance < 0 ? "text-destructive" : "text-primary"}
-        dataTestId="balance"
+        title="Total Points" 
+        value={`${points.toFixed(0)}`} 
+        icon={Coins} 
+        colorClass={"text-primary"}
+        dataTestId="points"
       />
       <StatCard 
-        title="Income / Second" 
-        value={`$${totalIncomePerSecond.toFixed(0)}`} 
+        title="Points / Second (PPS)" 
+        value={`${totalPointsPerSecond.toFixed(1)}`} 
         icon={TrendingUp} 
         colorClass="text-accent"
-        dataTestId="income-per-second"
+        dataTestId="points-per-second"
       />
       <StatCard 
-        title="Upkeep / Second" 
-        value={`$${totalUpkeepPerSecond.toFixed(0)}`} 
-        icon={TrendingDown} 
-        colorClass="text-destructive"
-        dataTestId="upkeep-per-second"
+        title="Points / Click (PPC)" 
+        value={`${pointsPerClick.toFixed(1)}`} 
+        icon={Zap} 
+        colorClass="text-amber-500" // Example color for PPC
+        dataTestId="points-per-click"
       />
     </div>
   );

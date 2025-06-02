@@ -3,35 +3,34 @@
 
 import type React from "react";
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import type { GameContextType, HiredEmployee, InventoryItem, ActiveBuff, AcquiredArtifice } from "@/lib/types";
-import { AVAILABLE_EMPLOYEES, calculateExponentialHireCost } from "@/config/employees";
+import type { GameContextType, PurchasedUpgrade, InventoryItem, ActiveBuff, AcquiredArtifice } from "@/lib/types";
+import { AVAILABLE_UPGRADES, calculateExponentialUpgradeCost } from "@/config/upgrades";
 import { AVAILABLE_ITEMS } from "@/config/items";
 import { AVAILABLE_ARTIFICES } from "@/config/artifices";
-import { INITIAL_BALANCE, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND } from "@/config/gameConfig";
+import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK } from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [balance, setBalance] = useState(INITIAL_BALANCE);
-  const [hiredEmployees, setHiredEmployees] = useState<Record<string, HiredEmployee>>({});
+  const [points, setPoints] = useState(INITIAL_POINTS);
+  const [purchasedUpgrades, setPurchasedUpgrades] = useState<Record<string, PurchasedUpgrade>>({});
   const [inventory, setInventory] = useState<Record<string, InventoryItem>>({});
   const [activeBuffs, setActiveBuffs] = useState<ActiveBuff[]>([]);
   const [acquiredArtifices, setAcquiredArtifices] = useState<Record<string, AcquiredArtifice>>({});
-  const [isGameOver, setIsGameOver] = useState(false);
+  // isGameOver removed as upkeep and negative balance game over condition is removed
   const [gameInitialized, setGameInitialized] = useState(false);
   const { toast } = useToast();
 
   const resetGame = useCallback(() => {
-    setBalance(INITIAL_BALANCE);
-    setHiredEmployees({});
+    setPoints(INITIAL_POINTS);
+    setPurchasedUpgrades({});
     setInventory({});
     setActiveBuffs([]);
     setAcquiredArtifices({});
-    setIsGameOver(false);
     setGameInitialized(true);
     setTimeout(() => {
-        toast({ title: "Game Reset", description: "Started a new marketing empire!" });
+        toast({ title: "Game Reset", description: "Started a new clicking adventure!" });
     }, 0);
   }, [toast]);
 
@@ -73,7 +72,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     if (acquiredArtifices[artificeId]) {
-      return;
+      return; // Already have this artifice
     }
 
     setAcquiredArtifices(prev => ({
@@ -85,7 +84,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({
         title: "Artifice Acquired!",
         description: `${artificeDef.name} - ${artificeDef.effectDescription}`,
-        variant: "default", 
+        variant: "default",
         duration: 5000,
       });
     }, 0);
@@ -113,14 +112,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     switch (itemDef.effect.type) {
-      case "INSTANT_BALANCE":
-        setBalance(prev => prev + itemDef.effect.value);
+      case "INSTANT_POINTS":
+        setPoints(prev => prev + itemDef.effect.value);
         setTimeout(() => {
-            toast({ title: `${itemDef.name} Used!`, description: `Gained $${itemDef.effect.value.toFixed(0)}!` });
+            toast({ title: `${itemDef.name} Used!`, description: `Gained ${itemDef.effect.value.toFixed(0)} Points!` });
         }, 0);
         break;
-      case "INCOME_MULTIPLIER":
-      case "UPKEEP_MULTIPLIER":
+      case "PPS_MULTIPLIER":
         if (itemDef.effect.durationSeconds) {
           setActiveBuffs(prevBuffs => {
             const now = Date.now();
@@ -141,6 +139,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (buffFoundAndStacked) {
               return newBuffs;
             } else {
+              // Remove other buffs of the same type if this new one is different
               newBuffs = prevBuffs.filter(buff => {
                 return !(buff.effectType === itemDef.effect.type && buff.itemId !== itemDef.id);
               });
@@ -163,73 +162,61 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [inventory, toast]);
 
 
-  const { totalIncomePerSecond, totalUpkeepPerSecond } = useMemo(() => {
-    let baseIncome = 0;
-    let baseUpkeep = 0;
-
-    Object.values(hiredEmployees).forEach(hiredEmp => {
-      const def = AVAILABLE_EMPLOYEES.find(e => e.id === hiredEmp.id);
+  const { totalPointsPerSecond, pointsPerClick } = useMemo(() => {
+    let basePPS = 0;
+    Object.values(purchasedUpgrades).forEach(purchasedUpg => {
+      const def = AVAILABLE_UPGRADES.find(u => u.id === purchasedUpg.id);
       if (def) {
-        let employeeIncome = def.incomePerSecond * hiredEmp.quantity;
-        let employeeUpkeep = def.upkeepPerSecond * hiredEmp.quantity;
-
+        let upgradePPS = def.ppsPerUnit * purchasedUpg.quantity;
         Object.values(acquiredArtifices).forEach(artifice => {
             const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
-            if (artificeDef?.effect.type === "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER" && artificeDef.effect.employeeId === def.id) {
-                employeeIncome *= artificeDef.effect.value;
-            }
-            if (artificeDef?.effect.type === "EMPLOYEE_SPECIFIC_UPKEEP_REDUCTION_MULTIPLIER" && artificeDef.effect.employeeId === def.id) {
-                employeeUpkeep *= artificeDef.effect.value;
+            if (artificeDef?.effect.type === "UPGRADE_SPECIFIC_PPS_MULTIPLIER" && artificeDef.effect.upgradeId === def.id) {
+                upgradePPS *= artificeDef.effect.value;
             }
         });
-        baseIncome += employeeIncome;
-        baseUpkeep += employeeUpkeep;
+        basePPS += upgradePPS;
       }
     });
 
-    let incomeWithTemporaryBuffs = baseIncome;
-    let upkeepWithTemporaryBuffs = baseUpkeep;
-
+    let ppsWithTemporaryBuffs = basePPS;
     const now = Date.now();
     activeBuffs.forEach(buff => {
       if (now < buff.expiresAt) {
-        if (buff.effectType === "INCOME_MULTIPLIER") {
-          incomeWithTemporaryBuffs *= buff.value;
-        } else if (buff.effectType === "UPKEEP_MULTIPLIER") {
-          upkeepWithTemporaryBuffs *= buff.value;
+        if (buff.effectType === "PPS_MULTIPLIER") {
+          ppsWithTemporaryBuffs *= buff.value;
         }
       }
     });
     
-    let finalIncome = incomeWithTemporaryBuffs;
-    let finalUpkeep = upkeepWithTemporaryBuffs;
+    let finalPPS = ppsWithTemporaryBuffs;
+    let currentPointsPerClick = POINTS_PER_CLICK;
 
     Object.values(acquiredArtifices).forEach(artifice => {
         const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
-        if (artificeDef?.effect.type === "GLOBAL_INCOME_MULTIPLIER") {
-            finalIncome *= artificeDef.effect.value;
+        if (artificeDef?.effect.type === "GLOBAL_PPS_MULTIPLIER") {
+            finalPPS *= artificeDef.effect.value;
         }
-        if (artificeDef?.effect.type === "GLOBAL_UPKEEP_REDUCTION_MULTIPLIER") {
-            finalUpkeep *= artificeDef.effect.value;
+        if (artificeDef?.effect.type === "GLOBAL_CLICK_POWER_MULTIPLIER") {
+            currentPointsPerClick *= artificeDef.effect.value;
         }
     });
 
-
-    return { totalIncomePerSecond: finalIncome, totalUpkeepPerSecond: finalUpkeep };
-  }, [hiredEmployees, activeBuffs, acquiredArtifices]);
+    return { totalPointsPerSecond: finalPPS, pointsPerClick: currentPointsPerClick };
+  }, [purchasedUpgrades, activeBuffs, acquiredArtifices]);
 
   useEffect(() => {
-    if (isGameOver || !gameInitialized) return;
+    if (!gameInitialized) return;
 
     const gameLoop = setInterval(() => {
-      if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) { 
-        const availableToDrop = AVAILABLE_ITEMS; 
+      // Passive item drops
+      if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) {
+        const availableToDrop = AVAILABLE_ITEMS;
         if (availableToDrop.length > 0) {
           const randomIndex = Math.floor(Math.random() * availableToDrop.length);
           addItemToInventory(availableToDrop[randomIndex].id);
         }
       }
-
+      // Passive artifice drops
       if (Math.random() < ARTIFICE_DROP_CHANCE_PER_SECOND) {
         const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
         if (unacquiredArtifices.length > 0) {
@@ -253,95 +240,93 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveBuffs(activeBuffsStillActive);
       }
 
-      setBalance(prevBalance => {
-        const netChange = totalIncomePerSecond - totalUpkeepPerSecond;
-        const newBalance = prevBalance + netChange;
-
-        if (newBalance < 0 && ( (Object.keys(hiredEmployees).length > 0 && totalIncomePerSecond <= totalUpkeepPerSecond) || (Object.keys(hiredEmployees).length === 0 && totalIncomePerSecond === 0 && prevBalance <=0) ) ) {
-          setIsGameOver(true);
-          setTimeout(() => {
-            toast({
-              title: "Game Over!",
-              description: "Your agency went bankrupt. Reset to try again.",
-              variant: "destructive",
-              duration: Infinity, 
-            });
-          }, 0);
-          clearInterval(gameLoop); 
-          return 0; 
-        }
-        return newBalance;
-      });
+      setPoints(prevPoints => prevPoints + totalPointsPerSecond); // Add PPS per second
     }, 1000);
 
     return () => clearInterval(gameLoop);
-  }, [totalIncomePerSecond, totalUpkeepPerSecond, isGameOver, hiredEmployees, gameInitialized, toast, addItemToInventory, activeBuffs, acquiredArtifices, addArtificeToCollection]);
+  }, [totalPointsPerSecond, gameInitialized, toast, addItemToInventory, activeBuffs, acquiredArtifices, addArtificeToCollection]);
 
 
-  const hireEmployee = useCallback((employeeId: string) => {
-    if (isGameOver) return;
-
-    const employeeDef = AVAILABLE_EMPLOYEES.find(emp => emp.id === employeeId);
-    if (!employeeDef) {
+  const purchaseUpgrade = useCallback((upgradeId: string) => {
+    const upgradeDef = AVAILABLE_UPGRADES.find(upg => upg.id === upgradeId);
+    if (!upgradeDef) {
       setTimeout(() => {
-        toast({ title: "Error", description: "Employee definition not found.", variant: "destructive" });
+        toast({ title: "Error", description: "Upgrade definition not found.", variant: "destructive" });
       }, 0);
       return;
     }
 
-    const numCurrentlyHired = hiredEmployees[employeeId]?.quantity || 0;
-    let actualHireCost = calculateExponentialHireCost(employeeDef.baseHireCost, numCurrentlyHired);
+    const numCurrentlyPurchased = purchasedUpgrades[upgradeId]?.quantity || 0;
+    let actualPurchaseCost = calculateExponentialUpgradeCost(upgradeDef.baseCost, numCurrentlyPurchased);
 
     Object.values(acquiredArtifices).forEach(artifice => {
       const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
       if (artificeDef) {
-        if (artificeDef.effect.type === "ALL_EMPLOYEES_HIRE_COST_MULTIPLIER") {
-          actualHireCost *= artificeDef.effect.value;
+        if (artificeDef.effect.type === "ALL_UPGRADES_COST_MULTIPLIER") {
+          actualPurchaseCost *= artificeDef.effect.value;
         }
-        if (artificeDef.effect.type === "SPECIFIC_EMPLOYEE_HIRE_COST_MULTIPLIER" && artificeDef.effect.employeeId === employeeId) {
-          actualHireCost *= artificeDef.effect.value;
+        if (artificeDef.effect.type === "SPECIFIC_UPGRADE_COST_MULTIPLIER" && artificeDef.effect.upgradeId === upgradeId) {
+          actualPurchaseCost *= artificeDef.effect.value;
         }
       }
     });
 
-
-    if (balance >= actualHireCost) {
-      setBalance(prev => prev - actualHireCost);
-      setHiredEmployees(prev => {
-        const newHired = { ...prev };
-        if (newHired[employeeId]) {
-          newHired[employeeId].quantity += 1;
+    if (points >= actualPurchaseCost) {
+      setPoints(prev => prev - actualPurchaseCost);
+      setPurchasedUpgrades(prev => {
+        const newPurchased = { ...prev };
+        if (newPurchased[upgradeId]) {
+          newPurchased[upgradeId].quantity += 1;
         } else {
-          newHired[employeeId] = { id: employeeId, quantity: 1 };
+          newPurchased[upgradeId] = { id: upgradeId, quantity: 1 };
         }
-        return newHired;
+        return newPurchased;
       });
       setTimeout(() => {
         toast({
-          title: "Employee Hired!",
-          description: `You hired a ${employeeDef.name} for $${actualHireCost.toFixed(0)}.`,
+          title: "Upgrade Purchased!",
+          description: `You purchased a ${upgradeDef.name} for ${actualPurchaseCost.toFixed(0)} Points.`,
         });
       },0);
     } else {
       setTimeout(() => {
         toast({
-          title: "Insufficient Funds",
-          description: `Not enough balance to hire ${employeeDef.name}. Need $${actualHireCost.toFixed(0)}, have $${balance.toFixed(0)}.`,
+          title: "Insufficient Points",
+          description: `Not enough points to purchase ${upgradeDef.name}. Need ${actualPurchaseCost.toFixed(0)}, have ${points.toFixed(0)}.`,
           variant: "destructive",
         });
       },0);
     }
-  }, [balance, isGameOver, toast, hiredEmployees, acquiredArtifices]);
+  }, [points, toast, purchasedUpgrades, acquiredArtifices]);
 
+  const clickMasterButton = useCallback(() => {
+    setPoints(prev => prev + pointsPerClick);
+    // Item drop chance on click
+    if (Math.random() < ITEM_DROP_CHANCE_PER_CLICK) {
+      const availableToDrop = AVAILABLE_ITEMS;
+      if (availableToDrop.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableToDrop.length);
+        addItemToInventory(availableToDrop[randomIndex].id);
+      }
+    }
+    // Artifice drop chance on click
+    if (Math.random() < ARTIFICE_DROP_CHANCE_PER_CLICK) {
+      const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
+      if (unacquiredArtifices.length > 0) {
+        const randomIndex = Math.floor(Math.random() * unacquiredArtifices.length);
+        addArtificeToCollection(unacquiredArtifices[randomIndex].id);
+      }
+    }
+  }, [pointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices]);
 
   const contextValue = useMemo(() => ({
-    balance,
-    setBalance,
-    hiredEmployees,
-    hireEmployee,
-    totalIncomePerSecond,
-    totalUpkeepPerSecond,
-    isGameOver,
+    points,
+    setPoints,
+    purchasedUpgrades,
+    purchaseUpgrade,
+    clickMasterButton,
+    pointsPerClick,
+    totalPointsPerSecond,
     resetGame,
     gameInitialized,
     inventory,
@@ -349,7 +334,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useItem,
     activeBuffs,
     acquiredArtifices
-  }), [balance, hiredEmployees, totalIncomePerSecond, totalUpkeepPerSecond, isGameOver, resetGame, gameInitialized, inventory, addItemToInventory, useItem, activeBuffs, acquiredArtifices, hireEmployee]);
+  }), [points, purchasedUpgrades, purchaseUpgrade, clickMasterButton, pointsPerClick, totalPointsPerSecond, resetGame, gameInitialized, inventory, addItemToInventory, useItem, activeBuffs, acquiredArtifices]);
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;
 };

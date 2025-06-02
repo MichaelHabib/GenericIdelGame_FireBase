@@ -1,74 +1,62 @@
 
 import type { ArtificeDefinition } from "@/lib/types";
-import { Gem, Award, Sparkles, TrendingUpIcon, ShieldHalf, DollarSignIcon } from "lucide-react";
+import { Gem, Award, Sparkles, Target, DollarSignIcon, Zap } from "lucide-react"; // Added Zap
 
 export const AVAILABLE_ARTIFICES: ArtificeDefinition[] = [
   {
     id: "eternal_growth_gem",
     name: "Eternal Growth Gem",
     description: "A pulsating gem that hums with untapped potential.",
-    effectDescription: "+5% to all income permanently.",
+    effectDescription: "+5% to all Points Per Second (PPS) permanently.",
     icon: Gem,
     effect: {
-      type: "GLOBAL_INCOME_MULTIPLIER",
+      type: "GLOBAL_PPS_MULTIPLIER",
       value: 1.05,
     },
   },
   {
-    id: "efficiency_charter",
-    name: "Charter of Efficiency",
-    description: "An ancient document detailing masterful operational processes.",
-    effectDescription: "-5% to all upkeep costs permanently.",
-    icon: Award,
+    id: "click_power_crystal",
+    name: "Crystal of a Thousand Clicks",
+    description: "Empowers each of your manual clicks.",
+    effectDescription: "+10% to Points Per Click permanently.",
+    icon: Zap, // Using Zap for click power
     effect: {
-      type: "GLOBAL_UPKEEP_REDUCTION_MULTIPLIER",
-      value: 0.95,
-    },
-  },
-  {
-    id: "seo_specialist_inspiration_orb",
-    name: "Inspiration Orb (SEO)",
-    description: "Boosts the effectiveness of your SEO Specialists.",
-    effectDescription: "+10% income from SEO Specialists permanently.",
-    icon: Sparkles,
-    effect: {
-      type: "EMPLOYEE_SPECIFIC_INCOME_MULTIPLIER",
-      employeeId: "seo_specialist",
+      type: "GLOBAL_CLICK_POWER_MULTIPLIER",
       value: 1.10,
     },
   },
   {
-    id: "intern_manual_of_thrift",
-    name: "Manual of Thrift (Intern)",
-    description: "A surprisingly effective guide for reducing intern-related expenses.",
-    effectDescription: "-20% upkeep for Marketing Interns permanently.",
-    icon: ShieldHalf,
+    id: "harvester_efficiency_core",
+    name: "Efficiency Core (Auto Harvester)",
+    description: "Boosts the effectiveness of your Auto Harvesters.",
+    effectDescription: "+10% PPS from Auto Harvesters permanently.",
+    icon: Sparkles,
     effect: {
-      type: "EMPLOYEE_SPECIFIC_UPKEEP_REDUCTION_MULTIPLIER",
-      employeeId: "intern",
-      value: 0.80,
+      type: "UPGRADE_SPECIFIC_PPS_MULTIPLIER",
+      upgradeId: "auto_harvester",
+      value: 1.10,
     },
   },
   {
-    id: "golden_handshake_token",
-    name: "Golden Handshake Token",
-    description: "Makes hiring new talent slightly more affordable across the board.",
-    effectDescription: "-5% to base hire cost for all employees permanently.",
-    icon: DollarSignIcon,
+    id: "golden_contract",
+    name: "Golden Contract",
+    description: "Makes acquiring new upgrades slightly more affordable.",
+    effectDescription: "-5% to base cost for all upgrades permanently.",
+    icon: Award, // Changed from DollarSignIcon
     effect: {
-      type: "ALL_EMPLOYEES_HIRE_COST_MULTIPLIER",
+      type: "ALL_UPGRADES_COST_MULTIPLIER",
       value: 0.95,
     },
   },
   {
-    id: "strategist_negotiation_guide",
-    name: "Negotiation Guide (Sr. Strategist)",
-    description: "Master the art of salary negotiation for Senior Strategists.",
-    effectDescription: "-10% to base hire cost for Senior Strategists permanently.",
-    icon: TrendingUpIcon, // Using a generic one as example
+    id: "quantum_discount_module",
+    name: "Discount Module (Quantum Computer)",
+    description: "Reduces the cost of Quantum Computers.",
+    effectDescription: "-10% to base cost for Quantum Computers permanently.",
+    icon: Target, // Using Target as a generic one
     effect: {
-      type: "SPECIFIC_EMPLOYEE_HIRE_COST_MULTIPLIER",
-      employeeId: "senior_strategist",
+      type: "SPECIFIC_UPGRADE_COST_MULTIPLIER",
+      upgradeId: "quantum_computer",
       value: 0.90,
     },
   }
