@@ -53,30 +53,29 @@ function GameUI() {
             </CardContent>
         </Card>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <UpgradeStore /> 
-          </div>
-          <div className="space-y-8">
-            <PurchasedUpgradesSummary />
-            <Tabs defaultValue="inventory" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="inventory">Inventory</TabsTrigger>
-                <TabsTrigger value="artifices">Artifices</TabsTrigger>
-                <TabsTrigger value="achievements">Achievements</TabsTrigger>
-              </TabsList>
-              <TabsContent value="inventory">
-                <InventorySection />
-              </TabsContent>
-              <TabsContent value="artifices">
-                <ArtificeSection />
-              </TabsContent>
-              <TabsContent value="achievements">
-                <AchievementsSection />
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+        <Tabs defaultValue="upgrades" className="w-full mt-8">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+            <TabsTrigger value="upgrades">Purchase Upgrades</TabsTrigger>
+            <TabsTrigger value="inventory">Inventory</TabsTrigger>
+            <TabsTrigger value="artifices">Artifices</TabsTrigger>
+            <TabsTrigger value="achievements">Achievements</TabsTrigger>
+          </TabsList>
+          <TabsContent value="upgrades">
+            <UpgradeStore />
+            <div className="mt-8">
+              <PurchasedUpgradesSummary />
+            </div>
+          </TabsContent>
+          <TabsContent value="inventory">
+            <InventorySection />
+          </TabsContent>
+          <TabsContent value="artifices">
+            <ArtificeSection />
+          </TabsContent>
+          <TabsContent value="achievements">
+            <AchievementsSection />
+          </TabsContent>
+        </Tabs>
 
         <div className="flex justify-center mt-8">
             <Button onClick={resetGame} variant="outline" size="lg">
