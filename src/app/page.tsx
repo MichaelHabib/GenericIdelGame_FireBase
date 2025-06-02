@@ -4,7 +4,6 @@
 import { GameProvider, useGame } from "@/components/GameProvider";
 import { Dashboard } from "@/components/Dashboard";
 import { UpgradeStore } from "@/components/UpgradeStore";
-// import { PurchasedUpgradesSummary } from "@/components/PurchasedUpgradesSummary"; // Removed
 import { InventorySection } from "@/components/InventorySection";
 import { ArtificeSection } from "@/components/ArtificeSection";
 import { AchievementsSection } from "@/components/AchievementsSection";
@@ -26,7 +25,7 @@ function GameUI() {
   }
 
   return (
-    <div className="min-h-screen bg-secondary p-4 md:p-8">
+    <div className="min-h-screen bg-secondary p-4 md:p-8 flex flex-col">
       <header className="mb-8 text-center">
         <div className="flex items-center justify-center mb-2">
          <Image src="/logo.svg" alt="Game Logo" width={60} height={60} data-ai-hint="game logo" className="mr-3" />
@@ -37,7 +36,7 @@ function GameUI() {
         <p className="text-lg text-muted-foreground">Click your way to victory!</p>
       </header>
       
-      <main className="space-y-8 max-w-7xl mx-auto">
+      <main className="space-y-8 max-w-7xl mx-auto w-full flex flex-col flex-grow">
         <Dashboard />
 
         <Card className="shadow-xl border-primary/50">
@@ -53,36 +52,35 @@ function GameUI() {
             </CardContent>
         </Card>
         
-        <Tabs defaultValue="upgrades" className="w-full mt-8">
+        <Tabs defaultValue="upgrades" className="w-full mt-8 flex flex-col flex-grow">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="upgrades">Purchase Upgrades</TabsTrigger>
             <TabsTrigger value="inventory">Inventory</TabsTrigger>
             <TabsTrigger value="artifices">Artifices</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
           </TabsList>
-          <TabsContent value="upgrades">
+          <TabsContent value="upgrades" className="min-h-[50vh] flex flex-col flex-grow mt-2">
             <UpgradeStore />
-            {/* Removed PurchasedUpgradesSummary from here */}
           </TabsContent>
-          <TabsContent value="inventory">
+          <TabsContent value="inventory" className="min-h-[50vh] flex flex-col flex-grow mt-2">
             <InventorySection />
           </TabsContent>
-          <TabsContent value="artifices">
+          <TabsContent value="artifices" className="min-h-[50vh] flex flex-col flex-grow mt-2">
             <ArtificeSection />
           </TabsContent>
-          <TabsContent value="achievements">
+          <TabsContent value="achievements" className="min-h-[50vh] flex flex-col flex-grow mt-2">
             <AchievementsSection />
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-center mt-8">
+        <div className="flex justify-center mt-auto pt-8"> {/* mt-auto pushes this to bottom if flex-grow is working */}
             <Button onClick={resetGame} variant="outline" size="lg">
               <RefreshCw className="mr-2 h-5 w-5" /> Reset Game
             </Button>
         </div>
         
       </main>
-      <footer className="mt-12 text-center text-sm text-muted-foreground">
+      <footer className="mt-12 text-center text-sm text-muted-foreground shrink-0">
         <p>&copy; {new Date().getFullYear()} Clicker Game Studios. All rights reserved.</p>
         <p className="text-xs">Game data is saved locally in your browser.</p>
       </footer>
@@ -97,3 +95,5 @@ export default function Home() {
     </GameProvider>
   );
 }
+
+    

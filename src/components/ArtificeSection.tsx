@@ -37,12 +37,12 @@ export function ArtificeSection() {
 
   if (!gameInitialized) {
     return (
-      <Card>
+      <Card className="flex flex-col flex-grow">
         <CardHeader>
           <Skeleton className="h-6 w-2/5" />
           <Skeleton className="h-4 w-3/5" />
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 flex-grow">
           {[...Array(1)].map((_, i) => (
             <Card key={i} className="p-3 space-y-2">
               <div className="flex items-start space-x-2">
@@ -61,14 +61,14 @@ export function ArtificeSection() {
   }
   
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg flex flex-col flex-grow">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold flex items-center">
           <Sparkles className="mr-3 h-6 w-6 text-amber-500" /> Acquired Artifices
         </CardTitle>
         <CardDescription>Ancient relics granting permanent boosts to your game.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         {artificeIds.length === 0 ? (
           <div className="text-center py-8">
             <Info className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -76,7 +76,7 @@ export function ArtificeSection() {
             <p className="text-sm text-muted-foreground">These rare items may drop randomly as you play or click.</p>
           </div>
         ) : (
-          <ScrollArea className="h-[200px] pr-3">
+          <ScrollArea className="h-full pr-3"> {/* Changed from h-[200px] */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {artificeIds.map(id => {
                 const artificeDef = AVAILABLE_ARTIFICES.find(a => a.id === id);
@@ -90,3 +90,4 @@ export function ArtificeSection() {
   );
 }
 
+    

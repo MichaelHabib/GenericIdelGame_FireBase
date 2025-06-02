@@ -25,9 +25,6 @@ const AchievementCard: React.FC<{ achievement: AchievementDefinition; isUnlocked
   if (achievement.reward.type === "POINTS") {
     rewardText = `+${achievement.reward.value.toLocaleString()} Points`;
   } else if (achievement.reward.type === "ITEM") {
-    // Ideally, get item name here. For now, just item ID.
-    // const itemDef = AVAILABLE_ITEMS.find(i => i.id === achievement.reward.itemId);
-    // rewardText = `+${achievement.reward.quantity} ${itemDef?.name || achievement.reward.itemId}`;
     rewardText = `Item: ${achievement.reward.itemId} (x${achievement.reward.quantity})`;
   }
   
@@ -72,12 +69,12 @@ export function AchievementsSection() {
 
   if (!gameInitialized) {
     return (
-      <Card className="shadow-lg">
+      <Card className="shadow-lg flex flex-col flex-grow">
         <CardHeader>
           <Skeleton className="h-7 w-2/5 mb-1" />
           <Skeleton className="h-4 w-3/5" />
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 flex-grow">
           {[...Array(3)].map((_, i) => (
             <Card key={i} className="p-3 space-y-2">
               <div className="flex items-start space-x-2">
@@ -96,18 +93,18 @@ export function AchievementsSection() {
   }
   
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg flex flex-col flex-grow">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold flex items-center">
           <Award className="mr-3 h-6 w-6 text-amber-400" /> Achievements
         </CardTitle>
         <CardDescription>Milestones and rewards for your clicking journey.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         {AVAILABLE_ACHIEVEMENTS.length === 0 ? (
           <p className="text-muted-foreground text-center py-4">No achievements defined yet.</p>
         ) : (
-          <ScrollArea className="h-[250px] pr-3 -mr-3"> {/* Negative margin to hide scrollbar track if content fits */}
+          <ScrollArea className="h-full pr-3 -mr-3"> {/* Changed from h-[250px] */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {AVAILABLE_ACHIEVEMENTS.map(achDef => {
                 const isUnlocked = !!acquiredAchievements[achDef.id];
@@ -128,3 +125,5 @@ export function AchievementsSection() {
     </Card>
   );
 }
+
+    

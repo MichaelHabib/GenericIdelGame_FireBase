@@ -8,7 +8,7 @@ import { AVAILABLE_UPGRADES, calculateExponentialUpgradeCost } from "@/config/up
 import { AVAILABLE_ITEMS } from "@/config/items";
 import { AVAILABLE_ARTIFICES } from "@/config/artifices";
 import { AVAILABLE_ACHIEVEMENTS } from "@/config/achievements";
-import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, SAVE_GAME_KEY, AUTOSAVE_INTERVAL, MAX_OFFLINE_EARNING_DURATION_SECONDS, FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP } from "@/config/gameConfig";
+import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, SAVE_GAME_KEY, AUTOSAVE_INTERVAL, MAX_OFFLINE_EARNING_DURATION_SECONDS } from "@/config/gameConfig"; // Removed FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP as it's no longer used directly here for drops
 import { useToast } from "@/hooks/use-toast";
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -83,7 +83,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         totalManualClicks,
         acquiredAchievements,
         lastSaveTimestamp: Date.now(),
-        version: "2", // For potential future migrations
+        version: "2.1", // Incremented version for offline progression change if needed
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
     } catch (error) {
@@ -112,7 +112,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setPoints(p => p + ach.reward.value);
           rewardMsg = `+${ach.reward.value} Points!`;
         } else if (ach.reward.type === "ITEM") {
-          // Directly call addItemToInventory logic here or ensure addItemToInventory is robust
           const itemDef = AVAILABLE_ITEMS.find(item => item.id === ach.reward.itemId);
            if(itemDef){
             setInventory(prevInv => {
@@ -150,11 +149,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const loadedTotalManualClicks = gameState.totalManualClicks || 0;
         const loadedAcquiredAchievements = gameState.acquiredAchievements || {};
         
-        // Offline Progress Calculation
         if (gameState.lastSaveTimestamp) {
-          const ppsAtSaveTime = (() => { // Calculate PPS based on saved state
+          const ppsAtSaveTime = (() => { 
             let basePPS = 0;
-            Object.values(loadedPurchasedUpgrades).forEach((purchasedUpg: any) => { // type purchasedUpg properly if possible
+            Object.values(loadedPurchasedUpgrades).forEach((purchasedUpg: any) => { 
               const def = AVAILABLE_UPGRADES.find(u => u.id === purchasedUpg.id);
               if (def) {
                 let upgradePPS = def.ppsPerUnit * purchasedUpg.quantity;
@@ -243,7 +241,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         totalManualClicks: 0,
         acquiredAchievements: {},
         lastSaveTimestamp: Date.now(),
-        version: "2",
+        version: "2.1",
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(initialGameState));
     } catch (error) {
@@ -277,9 +275,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if(gameInitialized){
       checkAndGrantAchievements();
     }
-  }, [points, purchasedUpgrades, totalManualClicks, gameInitialized, checkAndGrantAchievements]);
+  }, [points, purchasedUpgrades, totalManualClicks, acquiredArtifices, inventory, gameInitialized, checkAndGrantAchievements]); // Added artifices and inventory to dependency array as achievements might depend on them
 
-
+  // grantRandomFreeUpgrade is no longer called by random drops, but can be kept for other potential uses (e.g. achievement rewards)
   const grantRandomFreeUpgrade = useCallback(() => {
     if (AVAILABLE_UPGRADES.length === 0) return;
     const randomIndex = Math.floor(Math.random() * AVAILABLE_UPGRADES.length);
@@ -300,7 +298,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: `You received a free ${upgradeToGrant.name}!`,
       });
     }, 0);
-    saveGame(); // Save as PPS might change
+    saveGame(); 
   }, [toast, saveGame]);
 
   const addItemToInventory = useCallback((itemId: string, quantity: number = 1) => {
@@ -389,16 +387,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return {
                   ...buff,
                   expiresAt: Math.max(now, buff.expiresAt) + itemDef.effect.durationSeconds! * 1000,
-                  value: itemDef.effect.value,
+                  value: itemDef.effect.value, // ensure value is updated if item definition changes, though typically it won't for the same item ID
                 };
               }
               return buff;
-            }).filter(buff => now < buff.expiresAt); // Clean expired buffs before adding new one if not stacking
+            }).filter(buff => now < buff.expiresAt); 
 
             if (buffFoundAndStacked) {
               return newBuffs;
             } else {
-               // Remove other buffs of the same type before adding this one
               newBuffs = newBuffs.filter(buff => buff.effectType !== itemDef.effect.type);
               newBuffs.push({
                 itemId: itemDef.id,
@@ -422,16 +419,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!gameInitialized) return;
     const gameLoop = setInterval(() => {
-      // Item/Upgrade Drop Logic
+      // Item Drop Logic - No longer drops free upgrades
       if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) {
-        if (Math.random() < FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP) {
-          grantRandomFreeUpgrade();
-        } else {
-          const availableToDrop = AVAILABLE_ITEMS;
-          if (availableToDrop.length > 0) {
-            const randomIndex = Math.floor(Math.random() * availableToDrop.length);
-            addItemToInventory(availableToDrop[randomIndex].id);
-          }
+        const availableToDrop = AVAILABLE_ITEMS;
+        if (availableToDrop.length > 0) {
+          const randomIndex = Math.floor(Math.random() * availableToDrop.length);
+          addItemToInventory(availableToDrop[randomIndex].id);
         }
       }
       // Artifice Drop Logic
@@ -520,15 +513,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPoints(prev => prev + currentPointsPerClick);
     setTotalManualClicks(prev => prev + 1);
 
+    // Item Drop Logic on Click - No longer drops free upgrades
     if (Math.random() < ITEM_DROP_CHANCE_PER_CLICK) {
-       if (Math.random() < FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP) {
-          grantRandomFreeUpgrade();
-        } else {
-          const availableToDrop = AVAILABLE_ITEMS;
-          if (availableToDrop.length > 0) {
-            const randomIndex = Math.floor(Math.random() * availableToDrop.length);
-            addItemToInventory(availableToDrop[randomIndex].id);
-          }
+        const availableToDrop = AVAILABLE_ITEMS;
+        if (availableToDrop.length > 0) {
+          const randomIndex = Math.floor(Math.random() * availableToDrop.length);
+          addItemToInventory(availableToDrop[randomIndex].id);
         }
     }
     if (Math.random() < ARTIFICE_DROP_CHANCE_PER_CLICK) {
@@ -538,7 +528,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addArtificeToCollection(unacquiredArtifices[randomIndex].id);
       }
     }
-  }, [currentPointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices, grantRandomFreeUpgrade]);
+  }, [currentPointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices]); // Removed grantRandomFreeUpgrade from dependencies as it's not directly called for drops
 
   const contextValue = useMemo(() => ({
     points,
@@ -569,3 +559,5 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
+
+    

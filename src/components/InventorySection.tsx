@@ -55,7 +55,6 @@ const ActiveBuffDisplay: React.FC<{ buff: ActiveBuff }> = ({ buff }) => {
   if (itemDef.effect.type === "PPS_MULTIPLIER") {
     effectText = `+${((buff.value - 1) * 100).toFixed(0)}% PPS`;
   }
-  // Add other buff types here if needed
 
   return (
     <div className="flex items-center justify-between p-2 bg-accent/10 rounded-md border border-accent/30">
@@ -77,12 +76,12 @@ export function InventorySection() {
 
   if (!gameInitialized) {
     return (
-      <Card>
+      <Card className="flex flex-col flex-grow">
         <CardHeader>
           <Skeleton className="h-6 w-1/3" />
           <Skeleton className="h-4 w-2/3" />
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 flex-grow">
            <Skeleton className="h-5 w-1/4 mb-2" />
           {[...Array(2)].map((_, i) => (
             <Card key={i} className="p-3 space-y-2">
@@ -102,15 +101,15 @@ export function InventorySection() {
   }
   
   return (
-    <div className="space-y-6">
-      <Card className="shadow-lg">
+    <div className="space-y-6 flex flex-col flex-grow">
+      <Card className="shadow-lg flex flex-col flex-grow">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold flex items-center">
             <PackageSearch className="mr-3 h-6 w-6" /> My Inventory
           </CardTitle>
           <CardDescription>Items you've collected. Use them wisely!</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow">
           {inventoryItemIds.length === 0 ? (
             <div className="text-center py-8">
               <Info className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -118,7 +117,7 @@ export function InventorySection() {
               <p className="text-sm text-muted-foreground">Items will randomly drop as you play or click.</p>
             </div>
           ) : (
-            <ScrollArea className="h-[280px] pr-3">
+            <ScrollArea className="h-full pr-3"> {/* Changed from h-[280px] */}
               <div className="space-y-4">
                 {inventoryItemIds.map(id => (
                   <ItemCard 
@@ -135,7 +134,7 @@ export function InventorySection() {
       </Card>
 
       {activeBuffs.length > 0 && (
-        <Card className="shadow-lg">
+        <Card className="shadow-lg mt-4 shrink-0"> {/* Added shrink-0 to prevent this card from growing excessively */}
           <CardHeader>
             <CardTitle className="text-xl font-semibold flex items-center">
               <CheckCircle className="mr-3 h-5 w-5 text-accent" /> Active Effects
@@ -153,3 +152,4 @@ export function InventorySection() {
   );
 }
 
+    

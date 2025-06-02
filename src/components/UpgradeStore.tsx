@@ -1,23 +1,23 @@
 
 "use client";
 
-import { UpgradeCard } from "./UpgradeCard"; // Renamed from EmployeeCard
+import { UpgradeCard } from "./UpgradeCard"; 
 import { useGame } from "./GameProvider";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { AVAILABLE_UPGRADES } from "@/config/upgrades"; // Renamed from employees
+import { AVAILABLE_UPGRADES } from "@/config/upgrades"; 
 
 export function UpgradeStore() {
-  const { purchaseUpgrade, points, gameInitialized, purchasedUpgrades } = useGame(); // Renamed
+  const { purchaseUpgrade, points, gameInitialized, purchasedUpgrades } = useGame(); 
   const upgrades = AVAILABLE_UPGRADES;
 
   if (!gameInitialized) {
     return (
-      <Card>
+      <Card className="flex flex-col flex-grow">
         <CardHeader>
           <CardTitle>Available Upgrades</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-grow">
           {[...Array(3)].map((_, i) => (
             <Card key={i} className="p-4 space-y-3">
               <div className="flex items-center space-x-3">
@@ -35,12 +35,12 @@ export function UpgradeStore() {
   }
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg flex flex-col flex-grow">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">Purchase Upgrades</CardTitle>
         <p className="text-muted-foreground">Invest your points to increase your passive Points Per Second (PPS).</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow overflow-y-auto">
         {upgrades.length === 0 ? (
           <p>No upgrades available at the moment.</p>
         ) : (
@@ -63,3 +63,5 @@ export function UpgradeStore() {
     </Card>
   );
 }
+
+    
