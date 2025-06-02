@@ -3,6 +3,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'export', // Add this line to enable static export
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -21,6 +22,7 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true, // Allow SVGs
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    unoptimized: true, // Required for static export with next/image
   },
 };
 
