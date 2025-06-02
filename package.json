@@ -7,7 +7,10 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build && ./combine-js.sh && git add . && git commit -m \"Build updates\" ",
-    "build-github": "next build && git add . && git commit -m \"Build updates\" && git push",
+
+    "build-github": "next build",
+    "postbuild-github": "touch docs/.nojekyll && git add . && git commit -m \"Build updates\" && git push",
+
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
