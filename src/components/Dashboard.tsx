@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Coins, TrendingUp, Zap } from "lucide-react"; // Changed icons
+import { Coins, TrendingUp, Zap, Gem } from "lucide-react"; // Added Gem for Legacy Tokens
 import { useGame } from "./GameProvider";
 import { Skeleton } from "./ui/skeleton";
 
@@ -20,11 +20,12 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
 
 
 export function Dashboard() {
-  const { points, totalPointsPerSecond, pointsPerClick, gameInitialized } = useGame();
+  const { points, totalPointsPerSecond, pointsPerClick, gameInitialized, legacyTokens } = useGame();
 
   if (!gameInitialized) {
     return (
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
         <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
         <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
         <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
@@ -33,7 +34,7 @@ export function Dashboard() {
   }
   
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       <StatCard 
         title="Total Points" 
         value={`${points.toFixed(0)}`} 
@@ -52,8 +53,15 @@ export function Dashboard() {
         title="Points / Click (PPC)" 
         value={`${pointsPerClick.toFixed(1)}`} 
         icon={Zap} 
-        colorClass="text-amber-500" // Example color for PPC
+        colorClass="text-amber-500"
         dataTestId="points-per-click"
+      />
+      <StatCard
+        title="Legacy Tokens"
+        value={legacyTokens}
+        icon={Gem}
+        colorClass="text-purple-500" // Example color for Legacy Tokens
+        dataTestId="legacy-tokens"
       />
     </div>
   );

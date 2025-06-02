@@ -4,8 +4,9 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   output: 'export', // Add this line to enable static export
-  assetPrefix: "https://michaelhabib.github.io/GenericIdelGame_FireBase/",
-  distDir: 'docs', // Change the output directory to 'docs'
+ assetPrefix:
+ process.env.npm_lifecycle_event === 'build-github' ? 'https://michaelhabib.github.io/GenericIdelGame_FireBase/' : '',
+ distDir: 'docs', // Change the output directory to 'docs'
   typescript: {
     ignoreBuildErrors: true,
   },

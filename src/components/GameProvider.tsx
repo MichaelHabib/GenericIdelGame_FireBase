@@ -3,12 +3,20 @@
 
 import type React from "react";
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import type { GameContextType, PurchasedUpgrade, InventoryItem, ActiveBuff, AcquiredArtifice, AcquiredAchievement } from "@/lib/types";
+import type { GameContextType, PurchasedUpgrade, InventoryItem, ActiveBuff, AcquiredArtifice, AcquiredAchievement, PurchasedPrestigeUpgrade, GameStateSnapshot } from "@/lib/types";
 import { AVAILABLE_UPGRADES, calculateExponentialUpgradeCost } from "@/config/upgrades";
 import { AVAILABLE_ITEMS } from "@/config/items";
 import { AVAILABLE_ARTIFICES } from "@/config/artifices";
 import { AVAILABLE_ACHIEVEMENTS } from "@/config/achievements";
-import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, SAVE_GAME_KEY, AUTOSAVE_INTERVAL, MAX_OFFLINE_EARNING_DURATION_SECONDS } from "@/config/gameConfig"; // Removed FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP as it's no longer used directly here for drops
+import { AVAILABLE_PRESTIGE_UPGRADES } from "@/config/prestige";
+import { 
+  INITIAL_POINTS, POINTS_PER_CLICK, 
+  ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, 
+  ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, 
+  SAVE_GAME_KEY, AUTOSAVE_INTERVAL, MAX_OFFLINE_EARNING_DURATION_SECONDS,
+  INITIAL_LEGACY_TOKENS, PRESTIGE_POINTS_REQUIREMENT, LEGACY_TOKEN_FORMULA,
+  PRESTIGE_REQUIREMENT_INCREASE_FACTOR
+} from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -22,6 +30,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [gameInitialized, setGameInitialized] = useState(false);
   const [totalManualClicks, setTotalManualClicks] = useState(0);
   const [acquiredAchievements, setAcquiredAchievements] = useState<Record<string, AcquiredAchievement>>({});
+  
+  // Prestige State
+  const [legacyTokens, setLegacyTokens] = useState(INITIAL_LEGACY_TOKENS);
+  const [purchasedPrestigeUpgrades, setPurchasedPrestigeUpgrades] = useState<Record<string, PurchasedPrestigeUpgrade>>({});
+  const [currentPrestigeRequirement, setCurrentPrestigeRequirement] = useState(PRESTIGE_POINTS_REQUIREMENT);
+  const [prestigeCount, setPrestigeCount] = useState(0);
+
+
   const { toast } = useToast();
 
   const currentPointsPerClick = useMemo(() => {
@@ -32,8 +48,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         basePPC *= artificeDef.effect.value;
       }
     });
+    // Apply prestige PPC boosts
+    Object.values(purchasedPrestigeUpgrades).forEach(pu => {
+      const prestigeDef = AVAILABLE_PRESTIGE_UPGRADES.find(p => p.id === pu.id);
+      if (prestigeDef?.effect.type === "GLOBAL_PPC_BOOST_PRESTIGE") {
+        basePPC *= (1 + prestigeDef.effect.value * pu.level);
+      }
+    });
     return basePPC;
-  }, [acquiredArtifices]);
+  }, [acquiredArtifices, purchasedPrestigeUpgrades]);
 
   const currentTotalPointsPerSecond = useMemo(() => {
     let basePPS = 0;
@@ -68,8 +91,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         finalPPS *= artificeDef.effect.value;
       }
     });
+    // Apply prestige PPS boosts
+    Object.values(purchasedPrestigeUpgrades).forEach(pu => {
+      const prestigeDef = AVAILABLE_PRESTIGE_UPGRADES.find(p => p.id === pu.id);
+      if (prestigeDef?.effect.type === "GLOBAL_PPS_BOOST_PRESTIGE") {
+        finalPPS *= (1 + prestigeDef.effect.value * pu.level);
+      }
+    });
     return finalPPS;
-  }, [purchasedUpgrades, activeBuffs, acquiredArtifices]);
+  }, [purchasedUpgrades, activeBuffs, acquiredArtifices, purchasedPrestigeUpgrades]);
 
 
   const saveGame = useCallback(() => {
@@ -82,22 +112,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         acquiredArtifices,
         totalManualClicks,
         acquiredAchievements,
+        legacyTokens,
+        purchasedPrestigeUpgrades,
+        currentPrestigeRequirement,
+        prestigeCount,
         lastSaveTimestamp: Date.now(),
-        version: "2.1", // Incremented version for offline progression change if needed
+        version: "2.2", // Incremented version for prestige
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
     } catch (error) {
       console.error("Failed to save game:", error);
     }
-  }, [points, purchasedUpgrades, inventory, acquiredArtifices, totalManualClicks, acquiredAchievements, gameInitialized]);
+  }, [points, purchasedUpgrades, inventory, acquiredArtifices, totalManualClicks, acquiredAchievements, legacyTokens, purchasedPrestigeUpgrades, currentPrestigeRequirement, prestigeCount, gameInitialized]);
 
   const checkAndGrantAchievements = useCallback(() => {
-    const gameSnapshot = {
+    const gameSnapshot: GameStateSnapshot = {
         points,
         purchasedUpgrades,
         inventory,
         acquiredArtifices,
         totalManualClicks,
+        legacyTokens,
+        purchasedPrestigeUpgrades
     };
 
     AVAILABLE_ACHIEVEMENTS.forEach(ach => {
@@ -133,7 +169,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }, 0);
       }
     });
-  }, [points, purchasedUpgrades, inventory, acquiredArtifices, totalManualClicks, acquiredAchievements, toast]);
+  }, [points, purchasedUpgrades, inventory, acquiredArtifices, totalManualClicks, acquiredAchievements, legacyTokens, purchasedPrestigeUpgrades, toast]);
 
 
   const loadGame = useCallback(() => {
@@ -148,8 +184,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const loadedAcquiredArtifices = gameState.acquiredArtifices || {};
         const loadedTotalManualClicks = gameState.totalManualClicks || 0;
         const loadedAcquiredAchievements = gameState.acquiredAchievements || {};
-        
+        const loadedLegacyTokens = gameState.legacyTokens || INITIAL_LEGACY_TOKENS;
+        const loadedPurchasedPrestigeUpgrades = gameState.purchasedPrestigeUpgrades || {};
+        const loadedPrestigeCount = gameState.prestigeCount || 0;
+        const loadedCurrentPrestigeRequirement = gameState.currentPrestigeRequirement || PRESTIGE_POINTS_REQUIREMENT * Math.pow(PRESTIGE_REQUIREMENT_INCREASE_FACTOR, loadedPrestigeCount);
+
+
         if (gameState.lastSaveTimestamp) {
+          // Calculate offline PPS based on saved state before applying prestige effects from current load
           const ppsAtSaveTime = (() => { 
             let basePPS = 0;
             Object.values(loadedPurchasedUpgrades).forEach((purchasedUpg: any) => { 
@@ -170,6 +212,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (artificeDef?.effect.type === "GLOBAL_PPS_MULTIPLIER") {
                 basePPS *= artificeDef.effect.value;
               }
+            });
+             // Apply prestige PPS boosts from saved state
+            Object.values(loadedPurchasedPrestigeUpgrades).forEach((pu: any) => {
+                const prestigeDef = AVAILABLE_PRESTIGE_UPGRADES.find(p => p.id === pu.id);
+                if (prestigeDef?.effect.type === "GLOBAL_PPS_BOOST_PRESTIGE") {
+                    basePPS *= (1 + prestigeDef.effect.value * pu.level);
+                }
             });
             return basePPS;
           })();
@@ -195,13 +244,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAcquiredArtifices(loadedAcquiredArtifices);
         setTotalManualClicks(loadedTotalManualClicks);
         setAcquiredAchievements(loadedAcquiredAchievements);
-        setActiveBuffs([]);
+        setLegacyTokens(loadedLegacyTokens);
+        setPurchasedPrestigeUpgrades(loadedPurchasedPrestigeUpgrades);
+        setCurrentPrestigeRequirement(loadedCurrentPrestigeRequirement);
+        setPrestigeCount(loadedPrestigeCount);
+
+        setActiveBuffs([]); // Buffs are not saved
         
         setTimeout(() => {
           toast({ title: "Game Loaded", description: "Your progress has been restored." });
         }, 0);
       } else {
         setActiveBuffs([]);
+        setCurrentPrestigeRequirement(PRESTIGE_POINTS_REQUIREMENT);
+        setPrestigeCount(0);
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -211,6 +267,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAcquiredArtifices({});
       setTotalManualClicks(0);
       setAcquiredAchievements({});
+      setLegacyTokens(INITIAL_LEGACY_TOKENS);
+      setPurchasedPrestigeUpgrades({});
+      setCurrentPrestigeRequirement(PRESTIGE_POINTS_REQUIREMENT);
+      setPrestigeCount(0);
       setActiveBuffs([]);
     }
     setGameInitialized(true);
@@ -220,6 +280,87 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadGame();
   }, [loadGame]);
 
+  const prestigeGame = useCallback(() => {
+    if (points < currentPrestigeRequirement) {
+      toast({
+        title: "Prestige Not Available",
+        description: `You need ${currentPrestigeRequirement.toLocaleString()} points to prestige. You currently have ${points.toLocaleString()} points.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const earnedLT = LEGACY_TOKEN_FORMULA(points);
+    setLegacyTokens(prev => prev + earnedLT);
+    
+    let startingPointsAfterPrestige = INITIAL_POINTS;
+    const headStartUpgrade = purchasedPrestigeUpgrades['prestige_starting_points'];
+    if (headStartUpgrade && headStartUpgrade.level > 0) {
+        // Assuming the "Head Start" upgrade gives a flat 1000 points and doesn't stack its effect with levels,
+        // or it's a one-time purchase. If it stacks, this logic needs to change.
+        // For now, let's make it a flat 1000 if purchased.
+        startingPointsAfterPrestige = 1000;
+    }
+
+    setPoints(startingPointsAfterPrestige);
+    setPurchasedUpgrades({});
+    setInventory({});
+    setActiveBuffs([]);
+    // Acquired Artifices and Achievements are kept
+    // Purchased Prestige Upgrades are kept
+
+    const newPrestigeCount = prestigeCount + 1;
+    setPrestigeCount(newPrestigeCount);
+    setCurrentPrestigeRequirement(PRESTIGE_POINTS_REQUIREMENT * Math.pow(PRESTIGE_REQUIREMENT_INCREASE_FACTOR, newPrestigeCount));
+
+
+    toast({
+      title: "Prestiged!",
+      description: `You earned ${earnedLT} Legacy Tokens! Your game has been reset, but permanent bonuses remain.`,
+      duration: 7000,
+    });
+    saveGame();
+  }, [points, currentPrestigeRequirement, legacyTokens, prestigeCount, toast, saveGame, purchasedPrestigeUpgrades]);
+
+
+  const purchasePrestigeUpgrade = useCallback((upgradeId: string) => {
+    const upgradeDef = AVAILABLE_PRESTIGE_UPGRADES.find(upg => upg.id === upgradeId);
+    if (!upgradeDef) {
+      toast({ title: "Error", description: "Prestige upgrade not found.", variant: "destructive" });
+      return;
+    }
+
+    const currentLevel = purchasedPrestigeUpgrades[upgradeId]?.level || 0;
+    if (upgradeDef.maxLevel && currentLevel >= upgradeDef.maxLevel) {
+      toast({ title: "Max Level Reached", description: `You already have the maximum level for ${upgradeDef.name}.`, variant: "default" });
+      return;
+    }
+    
+    // For simplicity, let's assume cost doesn't scale with level for now, or it's a flat cost per level.
+    // If cost scales, this logic needs to be more complex.
+    const cost = upgradeDef.cost;
+
+    if (legacyTokens >= cost) {
+      setLegacyTokens(prev => prev - cost);
+      setPurchasedPrestigeUpgrades(prev => ({
+        ...prev,
+        [upgradeId]: { id: upgradeId, level: currentLevel + 1 },
+      }));
+      toast({
+        title: "Prestige Upgrade Purchased!",
+        description: `You purchased ${upgradeDef.name} (Level ${currentLevel + 1}) for ${cost} Legacy Tokens.`,
+      });
+      saveGame();
+    } else {
+      toast({
+        title: "Insufficient Legacy Tokens",
+        description: `Not enough Legacy Tokens to purchase ${upgradeDef.name}.`,
+        variant: "destructive",
+      });
+    }
+  }, [legacyTokens, purchasedPrestigeUpgrades, toast, saveGame]);
+
+
   const resetGame = useCallback(() => {
     setPoints(INITIAL_POINTS);
     setPurchasedUpgrades({});
@@ -228,6 +369,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAcquiredArtifices({});
     setTotalManualClicks(0);
     setAcquiredAchievements({});
+    setLegacyTokens(INITIAL_LEGACY_TOKENS);
+    setPurchasedPrestigeUpgrades({});
+    setCurrentPrestigeRequirement(PRESTIGE_POINTS_REQUIREMENT);
+    setPrestigeCount(0);
+
     setTimeout(() => {
       toast({ title: "Game Reset", description: "Started a new clicking adventure!" });
     }, 0);
@@ -240,8 +386,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         acquiredArtifices: {},
         totalManualClicks: 0,
         acquiredAchievements: {},
+        legacyTokens: INITIAL_LEGACY_TOKENS,
+        purchasedPrestigeUpgrades: {},
+        currentPrestigeRequirement: PRESTIGE_POINTS_REQUIREMENT,
+        prestigeCount: 0,
         lastSaveTimestamp: Date.now(),
-        version: "2.1",
+        version: "2.2",
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(initialGameState));
     } catch (error) {
@@ -275,31 +425,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if(gameInitialized){
       checkAndGrantAchievements();
     }
-  }, [points, purchasedUpgrades, totalManualClicks, acquiredArtifices, inventory, gameInitialized, checkAndGrantAchievements]); // Added artifices and inventory to dependency array as achievements might depend on them
-
-  // grantRandomFreeUpgrade is no longer called by random drops, but can be kept for other potential uses (e.g. achievement rewards)
-  const grantRandomFreeUpgrade = useCallback(() => {
-    if (AVAILABLE_UPGRADES.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * AVAILABLE_UPGRADES.length);
-    const upgradeToGrant = AVAILABLE_UPGRADES[randomIndex];
-
-    setPurchasedUpgrades(prev => {
-      const newPurchased = { ...prev };
-      if (newPurchased[upgradeToGrant.id]) {
-        newPurchased[upgradeToGrant.id].quantity += 1;
-      } else {
-        newPurchased[upgradeToGrant.id] = { id: upgradeToGrant.id, quantity: 1 };
-      }
-      return newPurchased;
-    });
-    setTimeout(() => {
-      toast({
-        title: "Bonus Drop!",
-        description: `You received a free ${upgradeToGrant.name}!`,
-      });
-    }, 0);
-    saveGame(); 
-  }, [toast, saveGame]);
+  }, [points, purchasedUpgrades, totalManualClicks, acquiredArtifices, inventory, legacyTokens, purchasedPrestigeUpgrades, gameInitialized, checkAndGrantAchievements]);
 
   const addItemToInventory = useCallback((itemId: string, quantity: number = 1) => {
     const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
@@ -322,8 +448,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         [itemId]: { itemId, quantity: newQuantity },
       };
     });
-    saveGame();
-  }, [toast, saveGame]);
+    // saveGame(); // Save game is called by checkAndGrantAchievements or by other actions
+  }, [toast]);
 
   const addArtificeToCollection = useCallback((artificeId: string) => {
     const artificeDef = AVAILABLE_ARTIFICES.find(art => art.id === artificeId);
@@ -331,7 +457,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Attempted to add unknown artifice:", artificeId);
       return;
     }
-    if (acquiredArtifices[artificeId]) return;
+    if (acquiredArtifices[artificeId]) return; // Already acquired
 
     setAcquiredArtifices(prev => ({
       ...prev,
@@ -345,8 +471,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         duration: 5000,
       });
     }, 0);
-    saveGame();
-  }, [toast, acquiredArtifices, saveGame]);
+    // saveGame();
+  }, [toast, acquiredArtifices]);
 
   const useItem = useCallback((itemId: string) => {
     const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
@@ -387,7 +513,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return {
                   ...buff,
                   expiresAt: Math.max(now, buff.expiresAt) + itemDef.effect.durationSeconds! * 1000,
-                  value: itemDef.effect.value, // ensure value is updated if item definition changes, though typically it won't for the same item ID
+                  value: itemDef.effect.value, 
                 };
               }
               return buff;
@@ -396,6 +522,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (buffFoundAndStacked) {
               return newBuffs;
             } else {
+              // If a buff of the same *type* but different *item* exists, replace it.
+              // If no buff of this type exists, add it.
               newBuffs = newBuffs.filter(buff => buff.effectType !== itemDef.effect.type);
               newBuffs.push({
                 itemId: itemDef.id,
@@ -412,23 +540,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         break;
     }
-    saveGame();
-  }, [inventory, toast, saveGame]);
+    // saveGame();
+  }, [inventory, toast]);
   
 
   useEffect(() => {
     if (!gameInitialized) return;
     const gameLoop = setInterval(() => {
-      // Item Drop Logic - No longer drops free upgrades
-      if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) {
+      let itemDropModifier = 1; // Default, can be increased by prestige upgrades
+      const artificeAttunement = purchasedPrestigeUpgrades['prestige_artifice_chance'];
+      if (artificeAttunement) {
+        // Example: +10% chance per level. Adjust this factor as needed.
+        itemDropModifier *= (1 + (0.1 * artificeAttunement.level)); 
+      }
+
+
+      if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND * itemDropModifier) {
         const availableToDrop = AVAILABLE_ITEMS;
         if (availableToDrop.length > 0) {
           const randomIndex = Math.floor(Math.random() * availableToDrop.length);
           addItemToInventory(availableToDrop[randomIndex].id);
         }
       }
-      // Artifice Drop Logic
-      if (Math.random() < ARTIFICE_DROP_CHANCE_PER_SECOND) {
+      
+      if (Math.random() < ARTIFICE_DROP_CHANCE_PER_SECOND * itemDropModifier) {
         const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
         if (unacquiredArtifices.length > 0) {
           const randomIndex = Math.floor(Math.random() * unacquiredArtifices.length);
@@ -454,7 +589,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPoints(prevPoints => prevPoints + currentTotalPointsPerSecond);
     }, 1000);
     return () => clearInterval(gameLoop);
-  }, [currentTotalPointsPerSecond, gameInitialized, toast, addItemToInventory, activeBuffs, acquiredArtifices, addArtificeToCollection, grantRandomFreeUpgrade]);
+  }, [currentTotalPointsPerSecond, gameInitialized, toast, addItemToInventory, activeBuffs, acquiredArtifices, addArtificeToCollection, purchasedPrestigeUpgrades]);
 
   const purchaseUpgrade = useCallback((upgradeId: string) => {
     const upgradeDef = AVAILABLE_UPGRADES.find(upg => upg.id === upgradeId);
@@ -479,6 +614,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     });
+
+    // Apply prestige cost reduction
+    const economicInsight = purchasedPrestigeUpgrades['prestige_cheaper_upgrades'];
+    if (economicInsight) {
+        // Example: 2% reduction per level
+        actualPurchaseCost *= (1 - (0.02 * economicInsight.level));
+    }
+
 
     if (points >= actualPurchaseCost) {
       setPoints(prev => prev - actualPurchaseCost);
@@ -507,28 +650,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }, 0);
     }
-  }, [points, toast, purchasedUpgrades, acquiredArtifices, saveGame]);
+  }, [points, toast, purchasedUpgrades, acquiredArtifices, saveGame, purchasedPrestigeUpgrades]);
 
   const clickMasterButton = useCallback(() => {
     setPoints(prev => prev + currentPointsPerClick);
     setTotalManualClicks(prev => prev + 1);
 
-    // Item Drop Logic on Click - No longer drops free upgrades
-    if (Math.random() < ITEM_DROP_CHANCE_PER_CLICK) {
+    let itemDropModifier = 1; // Default
+    const artificeAttunement = purchasedPrestigeUpgrades['prestige_artifice_chance'];
+    if (artificeAttunement) {
+      itemDropModifier *= (1 + (0.1 * artificeAttunement.level));
+    }
+
+
+    if (Math.random() < ITEM_DROP_CHANCE_PER_CLICK * itemDropModifier) {
         const availableToDrop = AVAILABLE_ITEMS;
         if (availableToDrop.length > 0) {
           const randomIndex = Math.floor(Math.random() * availableToDrop.length);
           addItemToInventory(availableToDrop[randomIndex].id);
         }
     }
-    if (Math.random() < ARTIFICE_DROP_CHANCE_PER_CLICK) {
+    if (Math.random() < ARTIFICE_DROP_CHANCE_PER_CLICK * itemDropModifier) {
       const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
       if (unacquiredArtifices.length > 0) {
         const randomIndex = Math.floor(Math.random() * unacquiredArtifices.length);
         addArtificeToCollection(unacquiredArtifices[randomIndex].id);
       }
     }
-  }, [currentPointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices]); // Removed grantRandomFreeUpgrade from dependencies as it's not directly called for drops
+  }, [currentPointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices, purchasedPrestigeUpgrades]);
 
   const contextValue = useMemo(() => ({
     points,
@@ -546,8 +695,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeBuffs,
     acquiredArtifices,
     acquiredAchievements,
-    totalManualClicks
-  }), [points, purchasedUpgrades, purchaseUpgrade, clickMasterButton, currentPointsPerClick, currentTotalPointsPerSecond, resetGame, gameInitialized, inventory, addItemToInventory, useItem, activeBuffs, acquiredArtifices, acquiredAchievements, totalManualClicks]);
+    totalManualClicks,
+    legacyTokens,
+    purchasedPrestigeUpgrades,
+    prestigeGame,
+    purchasePrestigeUpgrade,
+    currentPrestigeRequirement,
+    prestigeCount
+  }), [
+      points, purchasedUpgrades, purchaseUpgrade, clickMasterButton, currentPointsPerClick, 
+      currentTotalPointsPerSecond, resetGame, gameInitialized, inventory, addItemToInventory, 
+      useItem, activeBuffs, acquiredArtifices, acquiredAchievements, totalManualClicks,
+      legacyTokens, purchasedPrestigeUpgrades, prestigeGame, purchasePrestigeUpgrade,
+      currentPrestigeRequirement, prestigeCount
+    ]);
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;
 };
@@ -559,5 +720,3 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
-
-    

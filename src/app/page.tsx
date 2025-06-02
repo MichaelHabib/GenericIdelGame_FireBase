@@ -7,6 +7,7 @@ import { UpgradeStore } from "@/components/UpgradeStore";
 import { InventorySection } from "@/components/InventorySection";
 import { ArtificeSection } from "@/components/ArtificeSection";
 import { AchievementsSection } from "@/components/AchievementsSection";
+import { PrestigeSection } from "@/components/PrestigeSection"; // Added
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw, Pointer } from "lucide-react";
@@ -53,11 +54,12 @@ function GameUI() {
         </Card>
         
         <Tabs defaultValue="upgrades" className="w-full mt-8 flex flex-col flex-grow">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-            <TabsTrigger value="upgrades">Purchase Upgrades</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5"> {/* Adjusted for 5 tabs */}
+            <TabsTrigger value="upgrades">Upgrades</TabsTrigger>
             <TabsTrigger value="inventory">Inventory</TabsTrigger>
             <TabsTrigger value="artifices">Artifices</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
+            <TabsTrigger value="prestige">Prestige</TabsTrigger> {/* Added Prestige Tab */}
           </TabsList>
           <TabsContent value="upgrades" className="flex flex-col mt-2">
             <div className="min-h-[50vh] flex flex-col flex-grow">
@@ -65,7 +67,7 @@ function GameUI() {
             </div>
           </TabsContent>
           <TabsContent value="inventory" className="flex flex-col mt-2">
-            <div className="min-h-[50vh] flex flex-col flex-grow">
+             <div className="min-h-[50vh] flex flex-col flex-grow">
               <InventorySection />
             </div>
           </TabsContent>
@@ -75,8 +77,13 @@ function GameUI() {
             </div>
           </TabsContent>
           <TabsContent value="achievements" className="flex flex-col mt-2">
-            <div className="min-h-[50vh] flex flex-col flex-grow">
+             <div className="min-h-[50vh] flex flex-col flex-grow">
               <AchievementsSection />
+            </div>
+          </TabsContent>
+          <TabsContent value="prestige" className="flex flex-col mt-2"> {/* Added Prestige Content */}
+             <div className="min-h-[50vh] flex flex-col flex-grow">
+              <PrestigeSection />
             </div>
           </TabsContent>
         </Tabs>

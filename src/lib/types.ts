@@ -1,6 +1,5 @@
 
 import type { LucideIcon } from "lucide-react";
-import type { GameContextType as FullGameContextType } from "./types"; // Self-reference for condition
 
 export interface UpgradeDefinition {
   id: string;
@@ -97,15 +96,14 @@ export type AchievementRewardType =
   | { type: 'POINTS'; value: number; }
   | { type: 'ITEM'; itemId: string; quantity: number; };
 
-// Forward declare GameContextType for achievement condition
-// This avoids circular dependency if GameContextType itself needs Achievement types
-interface BaseGameStateType {
+export interface GameStateSnapshot {
   points: number;
   purchasedUpgrades: Record<string, PurchasedUpgrade>;
   inventory: Record<string, InventoryItem>;
-  activeBuffs: ActiveBuff[];
   acquiredArtifices: Record<string, AcquiredArtifice>;
-  // Potentially add more minimal fields if achievements need them directly and GameContextType becomes too large
+  totalManualClicks: number;
+  legacyTokens: number;
+  purchasedPrestigeUpgrades: Record<string, PurchasedPrestigeUpgrade>;
 }
 
 export interface AchievementDefinition {
@@ -113,21 +111,46 @@ export interface AchievementDefinition {
   name: string;
   description: string;
   icon: LucideIcon;
-  // condition now takes a snapshot of game state and specific tracked values
-  condition: (gameSnapshot: {
-    points: number;
-    purchasedUpgrades: Record<string, PurchasedUpgrade>;
-    inventory: Record<string, InventoryItem>;
-    acquiredArtifices: Record<string, AcquiredArtifice>;
-    totalManualClicks: number;
-    // Add other relevant snapshot data here as needed
-  }) => boolean;
+  condition: (gameSnapshot: GameStateSnapshot) => boolean;
   reward: AchievementRewardType;
 }
 
 export interface AcquiredAchievement {
   achievementId: string;
-  acquiredAt: number; // Timestamp
+  acquiredAt: number; 
+}
+
+export type PrestigeUpgradeEffectType = 
+  | "GLOBAL_PPS_BOOST_PRESTIGE" 
+  | "GLOBAL_PPC_BOOST_PRESTIGE";
+
+export interface PrestigeUpgradeEffect_GlobalPPS {
+  type: "GLOBAL_PPS_BOOST_PRESTIGE";
+  value: number; // e.g., 0.10 for +10%
+}
+
+export interface PrestigeUpgradeEffect_GlobalPPC {
+  type: "GLOBAL_PPC_BOOST_PRESTIGE";
+  value: number; // e.g., 0.05 for +5%
+}
+
+export type PrestigeUpgradeEffect = 
+  | PrestigeUpgradeEffect_GlobalPPS
+  | PrestigeUpgradeEffect_GlobalPPC;
+
+export interface PrestigeUpgradeDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  cost: number; // Cost in Legacy Tokens
+  effect: PrestigeUpgradeEffect;
+  maxLevel?: number; // Optional: if upgrades can be leveled up
+}
+
+export interface PurchasedPrestigeUpgrade {
+  id: string;
+  level: number; // Current level of the upgrade
 }
 
 export interface GameContextType {
@@ -145,6 +168,10 @@ export interface GameContextType {
   useItem: (itemId: string) => void;
   activeBuffs: ActiveBuff[];
   acquiredArtifices: Record<string, AcquiredArtifice>;
-  acquiredAchievements: Record<string, AcquiredAchievement>; // Added
-  totalManualClicks: number; // Added for achievement tracking
+  acquiredAchievements: Record<string, AcquiredAchievement>;
+  totalManualClicks: number;
+  legacyTokens: number;
+  purchasedPrestigeUpgrades: Record<string, PurchasedPrestigeUpgrade>;
+  prestigeGame: () => void;
+  purchasePrestigeUpgrade: (upgradeId: string) => void;
 }

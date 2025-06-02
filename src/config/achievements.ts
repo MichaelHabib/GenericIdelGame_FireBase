@@ -1,6 +1,7 @@
 
-import type { AchievementDefinition } from "@/lib/types";
-import { Award, DollarSign, HandMetal, Pointer, Rocket, Server, Sparkles, Target } from "lucide-react";
+import type { AchievementDefinition, GameStateSnapshot } from "@/lib/types";
+import { Award, DollarSign, HandMetal, Pointer, Rocket, Server, Sparkles, Target, Star } from "lucide-react"; // Added Star
+import { AVAILABLE_UPGRADES } from "./upgrades";
 
 export const AVAILABLE_ACHIEVEMENTS: AchievementDefinition[] = [
   {
@@ -79,13 +80,17 @@ export const AVAILABLE_ACHIEVEMENTS: AchievementDefinition[] = [
     description: "Own at least one of every type of upgrade.",
     icon: Target,
     condition: (gameSnapshot) => {
-      const allUpgradeIds = [
-        "basic_clicker", "auto_harvester", "point_synthesizer", 
-        "neural_network", "quantum_computer", "reality_bender",
-        "cosmic_forge", "chroniton_field", "singularity_engine" 
-      ];
+      const allUpgradeIds = AVAILABLE_UPGRADES.map(upg => upg.id);
       return allUpgradeIds.every(id => gameSnapshot.purchasedUpgrades[id] && gameSnapshot.purchasedUpgrades[id].quantity > 0);
     },
     reward: { type: "POINTS", value: 20000 },
+  },
+  {
+    id: "first_prestige",
+    name: "Rebirth",
+    description: "Prestige for the first time.",
+    icon: Star, // Using Star for prestige
+    condition: (gameSnapshot: GameStateSnapshot) => gameSnapshot.legacyTokens > 0 || (Object.keys(gameSnapshot.purchasedPrestigeUpgrades).length > 0), // A bit tricky to check *during* prestige, so check for tokens or purchased prestige upgrades
+    reward: { type: "POINTS", value: 100000 }, // A point boost after first prestige
   },
 ];
