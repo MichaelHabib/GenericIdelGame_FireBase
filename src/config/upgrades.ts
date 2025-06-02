@@ -1,6 +1,6 @@
 
 import type { UpgradeDefinition } from "@/lib/types";
-import { MousePointerClick, Server, Zap, Brain, Rocket, Gem } from "lucide-react";
+import { MousePointerClick, Server, Zap, Brain, Rocket, Gem, Star, Hourglass, Atom } from "lucide-react";
 
 export const AVAILABLE_UPGRADES: UpgradeDefinition[] = [
  {
@@ -48,8 +48,32 @@ export const AVAILABLE_UPGRADES: UpgradeDefinition[] = [
     name: "Reality Bender",
     description: "Manipulates the fabric of spacetime to will points into existence.",
     icon: Gem,
-    baseCost: 1500000,
+    baseCost: 1500000, // 1.5M
     ppsPerUnit: 1400,
+  },
+  {
+    id: "cosmic_forge",
+    name: "Cosmic Forge",
+    description: "Harnesses stellar energy to materialize vast quantities of points.",
+    icon: Star,
+    baseCost: 25000000, // 25M
+    ppsPerUnit: 7500,
+  },
+  {
+    id: "chroniton_field",
+    name: "Chroniton Field",
+    description: "Bends time itself to accelerate point accumulation across dimensions.",
+    icon: Hourglass,
+    baseCost: 300000000, // 300M
+    ppsPerUnit: 50000,
+  },
+  {
+    id: "singularity_engine",
+    name: "Singularity Engine",
+    description: "Taps into a micro-singularity for near-infinite point generation.",
+    icon: Atom,
+    baseCost: 5000000000, // 5B
+    ppsPerUnit: 300000,
   }
 ];
 

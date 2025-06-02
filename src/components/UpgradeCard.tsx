@@ -4,7 +4,7 @@
 import type { UpgradeDefinition } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Coins, TrendingUp, BadgeDollarSign, Zap } from "lucide-react";
+import { Coins, TrendingUp, BadgeDollarSign, Zap, Layers } from "lucide-react"; // Added Layers icon
 import type React from "react";
 import { calculateExponentialUpgradeCost } from "@/config/upgrades";
 
@@ -27,6 +27,7 @@ export function UpgradeCard({ upgrade, onPurchase, currentPoints, totalPurchased
   const IconComponent = upgrade.icon;
   const calculatedPurchaseCost = calculateExponentialUpgradeCost(upgrade.baseCost, totalPurchased);
   const canAfford = currentPoints >= calculatedPurchaseCost;
+  const totalPpsFromThisType = upgrade.ppsPerUnit * totalPurchased;
 
   return (
     <Card className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 text-left">
@@ -42,6 +43,12 @@ export function UpgradeCard({ upgrade, onPurchase, currentPoints, totalPurchased
       <CardContent className="flex-grow space-y-3 pt-0">
         <DetailItem icon={BadgeDollarSign} label="Next Cost" value={`${calculatedPurchaseCost.toFixed(0)} Pts`} />
         <DetailItem icon={Zap} label="PPS/Unit" value={`${upgrade.ppsPerUnit.toFixed(1)}`} valueClass="text-accent" />
+        {totalPurchased > 0 && (
+          <>
+            <DetailItem icon={Layers} label="Quantity Owned" value={totalPurchased} />
+            <DetailItem icon={TrendingUp} label="Total PPS (this type)" value={`${totalPpsFromThisType.toFixed(1)}`} valueClass="text-accent" />
+          </>
+        )}
       </CardContent>
       <CardFooter>
         <Button

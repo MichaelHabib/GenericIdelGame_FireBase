@@ -4,7 +4,7 @@
 import { GameProvider, useGame } from "@/components/GameProvider";
 import { Dashboard } from "@/components/Dashboard";
 import { UpgradeStore } from "@/components/UpgradeStore";
-import { PurchasedUpgradesSummary } from "@/components/PurchasedUpgradesSummary";
+// import { PurchasedUpgradesSummary } from "@/components/PurchasedUpgradesSummary"; // Removed
 import { InventorySection } from "@/components/InventorySection";
 import { ArtificeSection } from "@/components/ArtificeSection";
 import { AchievementsSection } from "@/components/AchievementsSection";
@@ -62,9 +62,7 @@ function GameUI() {
           </TabsList>
           <TabsContent value="upgrades">
             <UpgradeStore />
-            <div className="mt-8">
-              <PurchasedUpgradesSummary />
-            </div>
+            {/* Removed PurchasedUpgradesSummary from here */}
           </TabsContent>
           <TabsContent value="inventory">
             <InventorySection />

@@ -79,7 +79,11 @@ export const AVAILABLE_ACHIEVEMENTS: AchievementDefinition[] = [
     description: "Own at least one of every type of upgrade.",
     icon: Target,
     condition: (gameSnapshot) => {
-      const allUpgradeIds = ["basic_clicker", "auto_harvester", "point_synthesizer", "neural_network", "quantum_computer", "reality_bender"]; // Consider making this dynamic if upgrades change often
+      const allUpgradeIds = [
+        "basic_clicker", "auto_harvester", "point_synthesizer", 
+        "neural_network", "quantum_computer", "reality_bender",
+        "cosmic_forge", "chroniton_field", "singularity_engine" 
+      ];
       return allUpgradeIds.every(id => gameSnapshot.purchasedUpgrades[id] && gameSnapshot.purchasedUpgrades[id].quantity > 0);
     },
     reward: { type: "POINTS", value: 20000 },
