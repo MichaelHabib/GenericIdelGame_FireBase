@@ -3,11 +3,12 @@
 
 import type React from "react";
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import type { GameContextType, PurchasedUpgrade, InventoryItem, ActiveBuff, AcquiredArtifice } from "@/lib/types";
+import type { GameContextType, PurchasedUpgrade, InventoryItem, ActiveBuff, AcquiredArtifice, AcquiredAchievement } from "@/lib/types";
 import { AVAILABLE_UPGRADES, calculateExponentialUpgradeCost } from "@/config/upgrades";
 import { AVAILABLE_ITEMS } from "@/config/items";
 import { AVAILABLE_ARTIFICES } from "@/config/artifices";
-import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, SAVE_GAME_KEY, AUTOSAVE_INTERVAL } from "@/config/gameConfig";
+import { AVAILABLE_ACHIEVEMENTS } from "@/config/achievements";
+import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, SAVE_GAME_KEY, AUTOSAVE_INTERVAL, MAX_OFFLINE_EARNING_DURATION_SECONDS, FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP } from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -19,61 +20,207 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeBuffs, setActiveBuffs] = useState<ActiveBuff[]>([]);
   const [acquiredArtifices, setAcquiredArtifices] = useState<Record<string, AcquiredArtifice>>({});
   const [gameInitialized, setGameInitialized] = useState(false);
+  const [totalManualClicks, setTotalManualClicks] = useState(0);
+  const [acquiredAchievements, setAcquiredAchievements] = useState<Record<string, AcquiredAchievement>>({});
   const { toast } = useToast();
 
+  const currentPointsPerClick = useMemo(() => {
+    let basePPC = POINTS_PER_CLICK;
+    Object.values(acquiredArtifices).forEach(artifice => {
+      const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
+      if (artificeDef?.effect.type === "GLOBAL_CLICK_POWER_MULTIPLIER") {
+        basePPC *= artificeDef.effect.value;
+      }
+    });
+    return basePPC;
+  }, [acquiredArtifices]);
+
+  const currentTotalPointsPerSecond = useMemo(() => {
+    let basePPS = 0;
+    Object.values(purchasedUpgrades).forEach(purchasedUpg => {
+      const def = AVAILABLE_UPGRADES.find(u => u.id === purchasedUpg.id);
+      if (def) {
+        let upgradePPS = def.ppsPerUnit * purchasedUpg.quantity;
+        Object.values(acquiredArtifices).forEach(artifice => {
+          const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
+          if (artificeDef?.effect.type === "UPGRADE_SPECIFIC_PPS_MULTIPLIER" && artificeDef.effect.upgradeId === def.id) {
+            upgradePPS *= artificeDef.effect.value;
+          }
+        });
+        basePPS += upgradePPS;
+      }
+    });
+
+    let ppsWithTemporaryBuffs = basePPS;
+    const now = Date.now();
+    activeBuffs.forEach(buff => {
+      if (now < buff.expiresAt) {
+        if (buff.effectType === "PPS_MULTIPLIER") {
+          ppsWithTemporaryBuffs *= buff.value;
+        }
+      }
+    });
+
+    let finalPPS = ppsWithTemporaryBuffs;
+    Object.values(acquiredArtifices).forEach(artifice => {
+      const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
+      if (artificeDef?.effect.type === "GLOBAL_PPS_MULTIPLIER") {
+        finalPPS *= artificeDef.effect.value;
+      }
+    });
+    return finalPPS;
+  }, [purchasedUpgrades, activeBuffs, acquiredArtifices]);
+
+
   const saveGame = useCallback(() => {
-    if (!gameInitialized) return; // Don't save if game hasn't even initialized
+    if (!gameInitialized) return;
     try {
       const gameState = {
         points,
         purchasedUpgrades,
         inventory,
         acquiredArtifices,
-        lastSaved: Date.now()
+        totalManualClicks,
+        acquiredAchievements,
+        lastSaveTimestamp: Date.now(),
+        version: "2", // For potential future migrations
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
-      // console.log("Game saved!"); // Optional: for debugging
     } catch (error) {
       console.error("Failed to save game:", error);
-      // Optionally notify user if saving fails critically
     }
-  }, [points, purchasedUpgrades, inventory, acquiredArtifices, gameInitialized]);
+  }, [points, purchasedUpgrades, inventory, acquiredArtifices, totalManualClicks, acquiredAchievements, gameInitialized]);
+
+  const checkAndGrantAchievements = useCallback(() => {
+    const gameSnapshot = {
+        points,
+        purchasedUpgrades,
+        inventory,
+        acquiredArtifices,
+        totalManualClicks,
+    };
+
+    AVAILABLE_ACHIEVEMENTS.forEach(ach => {
+      if (!acquiredAchievements[ach.id] && ach.condition(gameSnapshot)) {
+        setAcquiredAchievements(prev => ({
+          ...prev,
+          [ach.id]: { achievementId: ach.id, acquiredAt: Date.now() },
+        }));
+
+        let rewardMsg = "";
+        if (ach.reward.type === "POINTS") {
+          setPoints(p => p + ach.reward.value);
+          rewardMsg = `+${ach.reward.value} Points!`;
+        } else if (ach.reward.type === "ITEM") {
+          // Directly call addItemToInventory logic here or ensure addItemToInventory is robust
+          const itemDef = AVAILABLE_ITEMS.find(item => item.id === ach.reward.itemId);
+           if(itemDef){
+            setInventory(prevInv => {
+              const currentQuantity = prevInv[ach.reward.itemId]?.quantity || 0;
+              return {
+                ...prevInv,
+                [ach.reward.itemId]: { itemId: ach.reward.itemId, quantity: currentQuantity + ach.reward.quantity },
+              };
+            });
+            rewardMsg = `+${ach.reward.quantity} ${itemDef.name}!`;
+          }
+        }
+        setTimeout(() => {
+          toast({
+            title: `Achievement Unlocked: ${ach.name}!`,
+            description: `${ach.description} ${rewardMsg}`,
+            duration: 5000,
+          });
+        }, 0);
+      }
+    });
+  }, [points, purchasedUpgrades, inventory, acquiredArtifices, totalManualClicks, acquiredAchievements, toast]);
+
 
   const loadGame = useCallback(() => {
     try {
       const savedGame = localStorage.getItem(SAVE_GAME_KEY);
       if (savedGame) {
         const gameState = JSON.parse(savedGame);
-        setPoints(gameState.points || INITIAL_POINTS);
-        setPurchasedUpgrades(gameState.purchasedUpgrades || {});
-        setInventory(gameState.inventory || {});
-        setAcquiredArtifices(gameState.acquiredArtifices || {});
-        // Do not load activeBuffs, they reset on load
-        setActiveBuffs([]); 
+        
+        let loadedPoints = gameState.points || INITIAL_POINTS;
+        const loadedPurchasedUpgrades = gameState.purchasedUpgrades || {};
+        const loadedInventory = gameState.inventory || {};
+        const loadedAcquiredArtifices = gameState.acquiredArtifices || {};
+        const loadedTotalManualClicks = gameState.totalManualClicks || 0;
+        const loadedAcquiredAchievements = gameState.acquiredAchievements || {};
+        
+        // Offline Progress Calculation
+        if (gameState.lastSaveTimestamp) {
+          const ppsAtSaveTime = (() => { // Calculate PPS based on saved state
+            let basePPS = 0;
+            Object.values(loadedPurchasedUpgrades).forEach((purchasedUpg: any) => { // type purchasedUpg properly if possible
+              const def = AVAILABLE_UPGRADES.find(u => u.id === purchasedUpg.id);
+              if (def) {
+                let upgradePPS = def.ppsPerUnit * purchasedUpg.quantity;
+                Object.values(loadedAcquiredArtifices).forEach((artifice: any) => {
+                    const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
+                    if (artificeDef?.effect.type === "UPGRADE_SPECIFIC_PPS_MULTIPLIER" && artificeDef.effect.upgradeId === def.id) {
+                        upgradePPS *= artificeDef.effect.value;
+                    }
+                });
+                basePPS += upgradePPS;
+              }
+            });
+            Object.values(loadedAcquiredArtifices).forEach((artifice: any) => {
+              const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
+              if (artificeDef?.effect.type === "GLOBAL_PPS_MULTIPLIER") {
+                basePPS *= artificeDef.effect.value;
+              }
+            });
+            return basePPS;
+          })();
+
+          const now = Date.now();
+          let elapsedSecondsOffline = (now - gameState.lastSaveTimestamp) / 1000;
+          elapsedSecondsOffline = Math.min(elapsedSecondsOffline, MAX_OFFLINE_EARNING_DURATION_SECONDS);
+          
+          if (elapsedSecondsOffline > 0 && ppsAtSaveTime > 0) {
+            const offlinePointsEarned = Math.floor(elapsedSecondsOffline * ppsAtSaveTime);
+            if (offlinePointsEarned > 0) {
+              loadedPoints += offlinePointsEarned;
+              setTimeout(() => {
+                toast({ title: "Welcome Back!", description: `You earned ${offlinePointsEarned.toLocaleString()} points while away.` });
+              }, 100);
+            }
+          }
+        }
+
+        setPoints(loadedPoints);
+        setPurchasedUpgrades(loadedPurchasedUpgrades);
+        setInventory(loadedInventory);
+        setAcquiredArtifices(loadedAcquiredArtifices);
+        setTotalManualClicks(loadedTotalManualClicks);
+        setAcquiredAchievements(loadedAcquiredAchievements);
+        setActiveBuffs([]);
+        
         setTimeout(() => {
           toast({ title: "Game Loaded", description: "Your progress has been restored." });
-        },0);
+        }, 0);
       } else {
-        // No saved game, use initial values (already set by useState defaults)
-        // but ensure buffs are clear
         setActiveBuffs([]);
       }
     } catch (error) {
       console.error("Failed to load game:", error);
-      // If loading fails, start a new game with initial values
       setPoints(INITIAL_POINTS);
       setPurchasedUpgrades({});
       setInventory({});
       setAcquiredArtifices({});
+      setTotalManualClicks(0);
+      setAcquiredAchievements({});
       setActiveBuffs([]);
     }
     setGameInitialized(true);
   }, [toast]);
-  
+
   useEffect(() => {
     loadGame();
   }, [loadGame]);
-
 
   const resetGame = useCallback(() => {
     setPoints(INITIAL_POINTS);
@@ -81,29 +228,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setInventory({});
     setActiveBuffs([]);
     setAcquiredArtifices({});
-    // setGameInitialized(true); // loadGame will set this
+    setTotalManualClicks(0);
+    setAcquiredAchievements({});
     setTimeout(() => {
-        toast({ title: "Game Reset", description: "Started a new clicking adventure!" });
+      toast({ title: "Game Reset", description: "Started a new clicking adventure!" });
     }, 0);
-    // Save the reset state
     try {
-        localStorage.removeItem(SAVE_GAME_KEY); // Clear old save specifically
-         const initialGameState = {
-            points: INITIAL_POINTS,
-            purchasedUpgrades: {},
-            inventory: {},
-            acquiredArtifices: {},
-            lastSaved: Date.now()
-        };
-        localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(initialGameState));
+      localStorage.removeItem(SAVE_GAME_KEY);
+      const initialGameState = {
+        points: INITIAL_POINTS,
+        purchasedUpgrades: {},
+        inventory: {},
+        acquiredArtifices: {},
+        totalManualClicks: 0,
+        acquiredAchievements: {},
+        lastSaveTimestamp: Date.now(),
+        version: "2",
+      };
+      localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(initialGameState));
     } catch (error) {
-        console.error("Failed to save reset game state:", error);
+      console.error("Failed to save reset game state:", error);
     }
-    if (!gameInitialized) { // Ensure game is marked as initialized if it wasn't
-        setGameInitialized(true);
+    if (!gameInitialized) {
+      setGameInitialized(true);
     }
   }, [toast, gameInitialized]);
-
 
   useEffect(() => {
     if (gameInitialized) {
@@ -112,7 +261,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [saveGame, gameInitialized]);
 
-  // Save on window unload as a fallback
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (gameInitialized) {
@@ -124,7 +272,36 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [saveGame, gameInitialized]);
+  
+  useEffect(() => {
+    if(gameInitialized){
+      checkAndGrantAchievements();
+    }
+  }, [points, purchasedUpgrades, totalManualClicks, gameInitialized, checkAndGrantAchievements]);
 
+
+  const grantRandomFreeUpgrade = useCallback(() => {
+    if (AVAILABLE_UPGRADES.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * AVAILABLE_UPGRADES.length);
+    const upgradeToGrant = AVAILABLE_UPGRADES[randomIndex];
+
+    setPurchasedUpgrades(prev => {
+      const newPurchased = { ...prev };
+      if (newPurchased[upgradeToGrant.id]) {
+        newPurchased[upgradeToGrant.id].quantity += 1;
+      } else {
+        newPurchased[upgradeToGrant.id] = { id: upgradeToGrant.id, quantity: 1 };
+      }
+      return newPurchased;
+    });
+    setTimeout(() => {
+      toast({
+        title: "Bonus Drop!",
+        description: `You received a free ${upgradeToGrant.name}!`,
+      });
+    }, 0);
+    saveGame(); // Save as PPS might change
+  }, [toast, saveGame]);
 
   const addItemToInventory = useCallback((itemId: string, quantity: number = 1) => {
     const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
@@ -132,12 +309,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Attempted to add unknown item:", itemId);
       return;
     }
-
     setInventory(prevInventory => {
       const existingItem = prevInventory[itemId];
       const currentQuantity = existingItem ? existingItem.quantity : 0;
       const newQuantity = currentQuantity + quantity;
-      
       setTimeout(() => {
         toast({
           title: "Item Acquired!",
@@ -158,15 +333,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Attempted to add unknown artifice:", artificeId);
       return;
     }
-    if (acquiredArtifices[artificeId]) {
-      return; 
-    }
+    if (acquiredArtifices[artificeId]) return;
 
     setAcquiredArtifices(prev => ({
       ...prev,
       [artificeId]: { artificeId, acquiredAt: Date.now() }
     }));
-
     setTimeout(() => {
       toast({
         title: "Artifice Acquired!",
@@ -177,7 +349,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 0);
     saveGame();
   }, [toast, acquiredArtifices, saveGame]);
-  
+
   const useItem = useCallback((itemId: string) => {
     const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
     const inventoryItem = inventory[itemId];
@@ -185,7 +357,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!itemDef || !inventoryItem || inventoryItem.quantity <= 0) {
       setTimeout(() => {
         toast({ title: "Item Error", description: "Cannot use this item.", variant: "destructive" });
-      },0);
+      }, 0);
       return;
     }
 
@@ -203,7 +375,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       case "INSTANT_POINTS":
         setPoints(prev => prev + itemDef.effect.value);
         setTimeout(() => {
-            toast({ title: `${itemDef.name} Used!`, description: `Gained ${itemDef.effect.value.toFixed(0)} Points!` });
+          toast({ title: `${itemDef.name} Used!`, description: `Gained ${itemDef.effect.value.toFixed(0)} Points!` });
         }, 0);
         break;
       case "PPS_MULTIPLIER":
@@ -211,7 +383,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setActiveBuffs(prevBuffs => {
             const now = Date.now();
             let buffFoundAndStacked = false;
-            
             let newBuffs = prevBuffs.map(buff => {
               if (buff.itemId === itemDef.id && buff.effectType === itemDef.effect.type) {
                 buffFoundAndStacked = true;
@@ -222,15 +393,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 };
               }
               return buff;
-            });
+            }).filter(buff => now < buff.expiresAt); // Clean expired buffs before adding new one if not stacking
 
             if (buffFoundAndStacked) {
               return newBuffs;
             } else {
-              newBuffs = prevBuffs.filter(buff => {
-                return !(buff.effectType === itemDef.effect.type && buff.itemId !== itemDef.id);
-              });
-              
+               // Remove other buffs of the same type before adding this one
+              newBuffs = newBuffs.filter(buff => buff.effectType !== itemDef.effect.type);
               newBuffs.push({
                 itemId: itemDef.id,
                 effectType: itemDef.effect.type,
@@ -242,67 +411,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setTimeout(() => {
             toast({ title: `${itemDef.name} Activated!`, description: `${itemDef.description}`, duration: itemDef.effect.durationSeconds! * 1000 });
-          },0);
+          }, 0);
         }
         break;
     }
     saveGame();
   }, [inventory, toast, saveGame]);
-
-
-  const { totalPointsPerSecond, pointsPerClick } = useMemo(() => {
-    let basePPS = 0;
-    Object.values(purchasedUpgrades).forEach(purchasedUpg => {
-      const def = AVAILABLE_UPGRADES.find(u => u.id === purchasedUpg.id);
-      if (def) {
-        let upgradePPS = def.ppsPerUnit * purchasedUpg.quantity;
-        Object.values(acquiredArtifices).forEach(artifice => {
-            const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
-            if (artificeDef?.effect.type === "UPGRADE_SPECIFIC_PPS_MULTIPLIER" && artificeDef.effect.upgradeId === def.id) {
-                upgradePPS *= artificeDef.effect.value;
-            }
-        });
-        basePPS += upgradePPS;
-      }
-    });
-
-    let ppsWithTemporaryBuffs = basePPS;
-    const now = Date.now();
-    activeBuffs.forEach(buff => {
-      if (now < buff.expiresAt) {
-        if (buff.effectType === "PPS_MULTIPLIER") {
-          ppsWithTemporaryBuffs *= buff.value;
-        }
-      }
-    });
-    
-    let finalPPS = ppsWithTemporaryBuffs;
-    let currentPointsPerClick = POINTS_PER_CLICK;
-
-    Object.values(acquiredArtifices).forEach(artifice => {
-        const artificeDef = AVAILABLE_ARTIFICES.find(ad => ad.id === artifice.artificeId);
-        if (artificeDef?.effect.type === "GLOBAL_PPS_MULTIPLIER") {
-            finalPPS *= artificeDef.effect.value;
-        }
-        if (artificeDef?.effect.type === "GLOBAL_CLICK_POWER_MULTIPLIER") {
-            currentPointsPerClick *= artificeDef.effect.value;
-        }
-    });
-
-    return { totalPointsPerSecond: finalPPS, pointsPerClick: currentPointsPerClick };
-  }, [purchasedUpgrades, activeBuffs, acquiredArtifices]);
+  
 
   useEffect(() => {
     if (!gameInitialized) return;
-
     const gameLoop = setInterval(() => {
+      // Item/Upgrade Drop Logic
       if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) {
-        const availableToDrop = AVAILABLE_ITEMS;
-        if (availableToDrop.length > 0) {
-          const randomIndex = Math.floor(Math.random() * availableToDrop.length);
-          addItemToInventory(availableToDrop[randomIndex].id);
+        if (Math.random() < FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP) {
+          grantRandomFreeUpgrade();
+        } else {
+          const availableToDrop = AVAILABLE_ITEMS;
+          if (availableToDrop.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableToDrop.length);
+            addItemToInventory(availableToDrop[randomIndex].id);
+          }
         }
       }
+      // Artifice Drop Logic
       if (Math.random() < ARTIFICE_DROP_CHANCE_PER_SECOND) {
         const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
         if (unacquiredArtifices.length > 0) {
@@ -326,12 +458,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveBuffs(activeBuffsStillActive);
       }
 
-      setPoints(prevPoints => prevPoints + totalPointsPerSecond); 
+      setPoints(prevPoints => prevPoints + currentTotalPointsPerSecond);
     }, 1000);
-
     return () => clearInterval(gameLoop);
-  }, [totalPointsPerSecond, gameInitialized, toast, addItemToInventory, activeBuffs, acquiredArtifices, addArtificeToCollection]);
-
+  }, [currentTotalPointsPerSecond, gameInitialized, toast, addItemToInventory, activeBuffs, acquiredArtifices, addArtificeToCollection, grantRandomFreeUpgrade]);
 
   const purchaseUpgrade = useCallback((upgradeId: string) => {
     const upgradeDef = AVAILABLE_UPGRADES.find(upg => upg.id === upgradeId);
@@ -373,7 +503,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "Upgrade Purchased!",
           description: `You purchased a ${upgradeDef.name} for ${actualPurchaseCost.toFixed(0)} Points.`,
         });
-      },0);
+      }, 0);
       saveGame();
     } else {
       setTimeout(() => {
@@ -382,18 +512,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: `Not enough points to purchase ${upgradeDef.name}. Need ${actualPurchaseCost.toFixed(0)}, have ${points.toFixed(0)}.`,
           variant: "destructive",
         });
-      },0);
+      }, 0);
     }
   }, [points, toast, purchasedUpgrades, acquiredArtifices, saveGame]);
 
   const clickMasterButton = useCallback(() => {
-    setPoints(prev => prev + pointsPerClick);
+    setPoints(prev => prev + currentPointsPerClick);
+    setTotalManualClicks(prev => prev + 1);
+
     if (Math.random() < ITEM_DROP_CHANCE_PER_CLICK) {
-      const availableToDrop = AVAILABLE_ITEMS;
-      if (availableToDrop.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableToDrop.length);
-        addItemToInventory(availableToDrop[randomIndex].id);
-      }
+       if (Math.random() < FREE_UPGRADE_DROP_CHANCE_OF_ITEM_DROP) {
+          grantRandomFreeUpgrade();
+        } else {
+          const availableToDrop = AVAILABLE_ITEMS;
+          if (availableToDrop.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableToDrop.length);
+            addItemToInventory(availableToDrop[randomIndex].id);
+          }
+        }
     }
     if (Math.random() < ARTIFICE_DROP_CHANCE_PER_CLICK) {
       const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
@@ -402,9 +538,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addArtificeToCollection(unacquiredArtifices[randomIndex].id);
       }
     }
-    // Note: saveGame() is not called here to avoid excessive writes on rapid clicks.
-    // Relies on auto-save or saves on other key actions.
-  }, [pointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices]);
+  }, [currentPointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices, grantRandomFreeUpgrade]);
 
   const contextValue = useMemo(() => ({
     points,
@@ -412,16 +546,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     purchasedUpgrades,
     purchaseUpgrade,
     clickMasterButton,
-    pointsPerClick,
-    totalPointsPerSecond,
+    pointsPerClick: currentPointsPerClick,
+    totalPointsPerSecond: currentTotalPointsPerSecond,
     resetGame,
     gameInitialized,
     inventory,
     addItemToInventory,
     useItem,
     activeBuffs,
-    acquiredArtifices
-  }), [points, purchasedUpgrades, purchaseUpgrade, clickMasterButton, pointsPerClick, totalPointsPerSecond, resetGame, gameInitialized, inventory, addItemToInventory, useItem, activeBuffs, acquiredArtifices]);
+    acquiredArtifices,
+    acquiredAchievements,
+    totalManualClicks
+  }), [points, purchasedUpgrades, purchaseUpgrade, clickMasterButton, currentPointsPerClick, currentTotalPointsPerSecond, resetGame, gameInitialized, inventory, addItemToInventory, useItem, activeBuffs, acquiredArtifices, acquiredAchievements, totalManualClicks]);
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;
 };
@@ -433,4 +569,3 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
-

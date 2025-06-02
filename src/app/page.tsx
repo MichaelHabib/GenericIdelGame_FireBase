@@ -3,17 +3,18 @@
 
 import { GameProvider, useGame } from "@/components/GameProvider";
 import { Dashboard } from "@/components/Dashboard";
-import { UpgradeStore } from "@/components/UpgradeStore"; // Renamed
-import { PurchasedUpgradesSummary } from "@/components/PurchasedUpgradesSummary"; // Renamed
+import { UpgradeStore } from "@/components/UpgradeStore";
+import { PurchasedUpgradesSummary } from "@/components/PurchasedUpgradesSummary";
 import { InventorySection } from "@/components/InventorySection";
 import { ArtificeSection } from "@/components/ArtificeSection";
+import { AchievementsSection } from "@/components/AchievementsSection"; // Added
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Zap, Pointer } from "lucide-react"; // Added Zap, Pointer
+import { Card, CardContent } from "@/components/ui/card"; // Removed unused Card imports
+import { RefreshCw, Pointer } from "lucide-react";
 import Image from "next/image";
 
 function GameUI() {
-  const { resetGame, gameInitialized, clickMasterButton } = useGame(); // isGameOver and balance removed
+  const { resetGame, gameInitialized, clickMasterButton } = useGame();
 
   if (!gameInitialized) {
     return (
@@ -22,8 +23,6 @@ function GameUI() {
         </div>
     );
   }
-
-  // Game Over screen removed as upkeep/negative balance condition is removed
 
   return (
     <div className="min-h-screen bg-secondary p-4 md:p-8">
@@ -57,6 +56,7 @@ function GameUI() {
           <div className="lg:col-span-2 space-y-8">
             <UpgradeStore /> 
             <ArtificeSection /> 
+            <AchievementsSection /> {/* Added Achievements Section */}
           </div>
           <div className="space-y-8">
             <PurchasedUpgradesSummary />
@@ -73,6 +73,7 @@ function GameUI() {
       </main>
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Clicker Game Studios. All rights reserved.</p>
+        <p className="text-xs">Game data is saved locally in your browser.</p>
       </footer>
     </div>
   );

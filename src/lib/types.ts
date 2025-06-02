@@ -1,5 +1,6 @@
 
 import type { LucideIcon } from "lucide-react";
+import type { GameContextType as FullGameContextType } from "./types"; // Self-reference for condition
 
 export interface UpgradeDefinition {
   id: string;
@@ -7,16 +8,15 @@ export interface UpgradeDefinition {
   description: string;
   icon: LucideIcon;
   baseCost: number;
-  ppsPerUnit: number; // Points Per Second per unit
-  // upkeepPerSecond removed as per new spec
+  ppsPerUnit: number;
 }
 
 export interface PurchasedUpgrade {
-  id: string; // Corresponds to UpgradeDefinition id
+  id: string;
   quantity: number;
 }
 
-export type ItemEffectType = "INSTANT_POINTS" | "PPS_MULTIPLIER"; // Simplified for clicker
+export type ItemEffectType = "INSTANT_POINTS" | "PPS_MULTIPLIER";
 
 export interface ItemDefinition {
   id: string;
@@ -39,24 +39,23 @@ export interface ActiveBuff {
   itemId: string;
   effectType: ItemEffectType;
   value: number;
-  expiresAt: number; // Timestamp
+  expiresAt: number;
 }
 
-// Artifice types remain largely the same, but effects might target PPS or click power
 export type ArtificeEffectTypePermanent =
   | "GLOBAL_PPS_MULTIPLIER"
-  | "GLOBAL_CLICK_POWER_MULTIPLIER" // New: for click button
+  | "GLOBAL_CLICK_POWER_MULTIPLIER"
   | "UPGRADE_SPECIFIC_PPS_MULTIPLIER"
   | "ALL_UPGRADES_COST_MULTIPLIER"
   | "SPECIFIC_UPGRADE_COST_MULTIPLIER";
 
 export interface ArtificeEffect_GlobalPPSMultiplier {
   type: "GLOBAL_PPS_MULTIPLIER";
-  value: number; // e.g., 1.05 for +5%
+  value: number;
 }
 export interface ArtificeEffect_GlobalClickPowerMultiplier {
   type: "GLOBAL_CLICK_POWER_MULTIPLIER";
-  value: number; // e.g., 1.1 for +10% click power
+  value: number;
 }
 export interface ArtificeEffect_UpgradeSpecificPPSMultiplier {
   type: "UPGRADE_SPECIFIC_PPS_MULTIPLIER";
@@ -65,12 +64,12 @@ export interface ArtificeEffect_UpgradeSpecificPPSMultiplier {
 }
 export interface ArtificeEffect_AllUpgradesCostMultiplier {
   type: "ALL_UPGRADES_COST_MULTIPLIER";
-  value: number; // e.g. 0.9 for 10% cheaper
+  value: number;
 }
 export interface ArtificeEffect_SpecificUpgradeCostMultiplier {
   type: "SPECIFIC_UPGRADE_COST_MULTIPLIER";
   upgradeId: string;
-  value: number; // e.g. 0.9 for 10% cheaper for this upgrade
+  value: number;
 }
 
 export type ArtificeEffectPermanent =
@@ -91,6 +90,43 @@ export interface ArtificeDefinition {
 
 export interface AcquiredArtifice {
   artificeId: string;
+  acquiredAt: number;
+}
+
+export type AchievementRewardType = 
+  | { type: 'POINTS'; value: number; }
+  | { type: 'ITEM'; itemId: string; quantity: number; };
+
+// Forward declare GameContextType for achievement condition
+// This avoids circular dependency if GameContextType itself needs Achievement types
+interface BaseGameStateType {
+  points: number;
+  purchasedUpgrades: Record<string, PurchasedUpgrade>;
+  inventory: Record<string, InventoryItem>;
+  activeBuffs: ActiveBuff[];
+  acquiredArtifices: Record<string, AcquiredArtifice>;
+  // Potentially add more minimal fields if achievements need them directly and GameContextType becomes too large
+}
+
+export interface AchievementDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  // condition now takes a snapshot of game state and specific tracked values
+  condition: (gameSnapshot: {
+    points: number;
+    purchasedUpgrades: Record<string, PurchasedUpgrade>;
+    inventory: Record<string, InventoryItem>;
+    acquiredArtifices: Record<string, AcquiredArtifice>;
+    totalManualClicks: number;
+    // Add other relevant snapshot data here as needed
+  }) => boolean;
+  reward: AchievementRewardType;
+}
+
+export interface AcquiredAchievement {
+  achievementId: string;
   acquiredAt: number; // Timestamp
 }
 
@@ -99,10 +135,9 @@ export interface GameContextType {
   setPoints: React.Dispatch<React.SetStateAction<number>>;
   purchasedUpgrades: Record<string, PurchasedUpgrade>;
   purchaseUpgrade: (upgradeId: string) => void;
-  clickMasterButton: () => void; // New for main click action
+  clickMasterButton: () => void;
   pointsPerClick: number;
   totalPointsPerSecond: number;
-  // isGameOver removed
   resetGame: () => void;
   gameInitialized: boolean;
   inventory: Record<string, InventoryItem>;
@@ -110,4 +145,6 @@ export interface GameContextType {
   useItem: (itemId: string) => void;
   activeBuffs: ActiveBuff[];
   acquiredArtifices: Record<string, AcquiredArtifice>;
+  acquiredAchievements: Record<string, AcquiredAchievement>; // Added
+  totalManualClicks: number; // Added for achievement tracking
 }
