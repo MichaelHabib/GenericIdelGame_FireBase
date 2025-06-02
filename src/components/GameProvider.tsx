@@ -7,7 +7,7 @@ import type { GameContextType, PurchasedUpgrade, InventoryItem, ActiveBuff, Acqu
 import { AVAILABLE_UPGRADES, calculateExponentialUpgradeCost } from "@/config/upgrades";
 import { AVAILABLE_ITEMS } from "@/config/items";
 import { AVAILABLE_ARTIFICES } from "@/config/artifices";
-import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK } from "@/config/gameConfig";
+import { INITIAL_POINTS, POINTS_PER_CLICK, ITEM_DROP_CHANCE_PER_SECOND, ARTIFICE_DROP_CHANCE_PER_SECOND, ITEM_DROP_CHANCE_PER_CLICK, ARTIFICE_DROP_CHANCE_PER_CLICK, SAVE_GAME_KEY, AUTOSAVE_INTERVAL } from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -18,9 +18,62 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [inventory, setInventory] = useState<Record<string, InventoryItem>>({});
   const [activeBuffs, setActiveBuffs] = useState<ActiveBuff[]>([]);
   const [acquiredArtifices, setAcquiredArtifices] = useState<Record<string, AcquiredArtifice>>({});
-  // isGameOver removed as upkeep and negative balance game over condition is removed
   const [gameInitialized, setGameInitialized] = useState(false);
   const { toast } = useToast();
+
+  const saveGame = useCallback(() => {
+    if (!gameInitialized) return; // Don't save if game hasn't even initialized
+    try {
+      const gameState = {
+        points,
+        purchasedUpgrades,
+        inventory,
+        acquiredArtifices,
+        lastSaved: Date.now()
+      };
+      localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
+      // console.log("Game saved!"); // Optional: for debugging
+    } catch (error) {
+      console.error("Failed to save game:", error);
+      // Optionally notify user if saving fails critically
+    }
+  }, [points, purchasedUpgrades, inventory, acquiredArtifices, gameInitialized]);
+
+  const loadGame = useCallback(() => {
+    try {
+      const savedGame = localStorage.getItem(SAVE_GAME_KEY);
+      if (savedGame) {
+        const gameState = JSON.parse(savedGame);
+        setPoints(gameState.points || INITIAL_POINTS);
+        setPurchasedUpgrades(gameState.purchasedUpgrades || {});
+        setInventory(gameState.inventory || {});
+        setAcquiredArtifices(gameState.acquiredArtifices || {});
+        // Do not load activeBuffs, they reset on load
+        setActiveBuffs([]); 
+        setTimeout(() => {
+          toast({ title: "Game Loaded", description: "Your progress has been restored." });
+        },0);
+      } else {
+        // No saved game, use initial values (already set by useState defaults)
+        // but ensure buffs are clear
+        setActiveBuffs([]);
+      }
+    } catch (error) {
+      console.error("Failed to load game:", error);
+      // If loading fails, start a new game with initial values
+      setPoints(INITIAL_POINTS);
+      setPurchasedUpgrades({});
+      setInventory({});
+      setAcquiredArtifices({});
+      setActiveBuffs([]);
+    }
+    setGameInitialized(true);
+  }, [toast]);
+  
+  useEffect(() => {
+    loadGame();
+  }, [loadGame]);
+
 
   const resetGame = useCallback(() => {
     setPoints(INITIAL_POINTS);
@@ -28,17 +81,50 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setInventory({});
     setActiveBuffs([]);
     setAcquiredArtifices({});
-    setGameInitialized(true);
+    // setGameInitialized(true); // loadGame will set this
     setTimeout(() => {
         toast({ title: "Game Reset", description: "Started a new clicking adventure!" });
     }, 0);
-  }, [toast]);
+    // Save the reset state
+    try {
+        localStorage.removeItem(SAVE_GAME_KEY); // Clear old save specifically
+         const initialGameState = {
+            points: INITIAL_POINTS,
+            purchasedUpgrades: {},
+            inventory: {},
+            acquiredArtifices: {},
+            lastSaved: Date.now()
+        };
+        localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(initialGameState));
+    } catch (error) {
+        console.error("Failed to save reset game state:", error);
+    }
+    if (!gameInitialized) { // Ensure game is marked as initialized if it wasn't
+        setGameInitialized(true);
+    }
+  }, [toast, gameInitialized]);
+
 
   useEffect(() => {
-    if (!gameInitialized) {
-      resetGame();
+    if (gameInitialized) {
+      const autoSaveTimer = setInterval(saveGame, AUTOSAVE_INTERVAL);
+      return () => clearInterval(autoSaveTimer);
     }
-  }, [gameInitialized, resetGame]);
+  }, [saveGame, gameInitialized]);
+
+  // Save on window unload as a fallback
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (gameInitialized) {
+        saveGame();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [saveGame, gameInitialized]);
+
 
   const addItemToInventory = useCallback((itemId: string, quantity: number = 1) => {
     const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
@@ -63,7 +149,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         [itemId]: { itemId, quantity: newQuantity },
       };
     });
-  }, [toast]);
+    saveGame();
+  }, [toast, saveGame]);
 
   const addArtificeToCollection = useCallback((artificeId: string) => {
     const artificeDef = AVAILABLE_ARTIFICES.find(art => art.id === artificeId);
@@ -72,7 +159,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     if (acquiredArtifices[artificeId]) {
-      return; // Already have this artifice
+      return; 
     }
 
     setAcquiredArtifices(prev => ({
@@ -88,7 +175,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         duration: 5000,
       });
     }, 0);
-  }, [toast, acquiredArtifices]);
+    saveGame();
+  }, [toast, acquiredArtifices, saveGame]);
   
   const useItem = useCallback((itemId: string) => {
     const itemDef = AVAILABLE_ITEMS.find(item => item.id === itemId);
@@ -139,7 +227,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (buffFoundAndStacked) {
               return newBuffs;
             } else {
-              // Remove other buffs of the same type if this new one is different
               newBuffs = prevBuffs.filter(buff => {
                 return !(buff.effectType === itemDef.effect.type && buff.itemId !== itemDef.id);
               });
@@ -159,7 +246,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         break;
     }
-  }, [inventory, toast]);
+    saveGame();
+  }, [inventory, toast, saveGame]);
 
 
   const { totalPointsPerSecond, pointsPerClick } = useMemo(() => {
@@ -208,7 +296,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!gameInitialized) return;
 
     const gameLoop = setInterval(() => {
-      // Passive item drops
       if (Math.random() < ITEM_DROP_CHANCE_PER_SECOND) {
         const availableToDrop = AVAILABLE_ITEMS;
         if (availableToDrop.length > 0) {
@@ -216,7 +303,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           addItemToInventory(availableToDrop[randomIndex].id);
         }
       }
-      // Passive artifice drops
       if (Math.random() < ARTIFICE_DROP_CHANCE_PER_SECOND) {
         const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
         if (unacquiredArtifices.length > 0) {
@@ -240,7 +326,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveBuffs(activeBuffsStillActive);
       }
 
-      setPoints(prevPoints => prevPoints + totalPointsPerSecond); // Add PPS per second
+      setPoints(prevPoints => prevPoints + totalPointsPerSecond); 
     }, 1000);
 
     return () => clearInterval(gameLoop);
@@ -288,6 +374,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: `You purchased a ${upgradeDef.name} for ${actualPurchaseCost.toFixed(0)} Points.`,
         });
       },0);
+      saveGame();
     } else {
       setTimeout(() => {
         toast({
@@ -297,11 +384,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       },0);
     }
-  }, [points, toast, purchasedUpgrades, acquiredArtifices]);
+  }, [points, toast, purchasedUpgrades, acquiredArtifices, saveGame]);
 
   const clickMasterButton = useCallback(() => {
     setPoints(prev => prev + pointsPerClick);
-    // Item drop chance on click
     if (Math.random() < ITEM_DROP_CHANCE_PER_CLICK) {
       const availableToDrop = AVAILABLE_ITEMS;
       if (availableToDrop.length > 0) {
@@ -309,7 +395,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addItemToInventory(availableToDrop[randomIndex].id);
       }
     }
-    // Artifice drop chance on click
     if (Math.random() < ARTIFICE_DROP_CHANCE_PER_CLICK) {
       const unacquiredArtifices = AVAILABLE_ARTIFICES.filter(artDef => !acquiredArtifices[artDef.id]);
       if (unacquiredArtifices.length > 0) {
@@ -317,6 +402,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addArtificeToCollection(unacquiredArtifices[randomIndex].id);
       }
     }
+    // Note: saveGame() is not called here to avoid excessive writes on rapid clicks.
+    // Relies on auto-save or saves on other key actions.
   }, [pointsPerClick, addItemToInventory, addArtificeToCollection, acquiredArtifices]);
 
   const contextValue = useMemo(() => ({
@@ -346,3 +433,4 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
+
